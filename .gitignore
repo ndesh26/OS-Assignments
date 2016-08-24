@@ -1,0 +1,16 @@
+# Ignore all
+*
+
+# Unignore all with extensions
+!*.*
+
+# Unignore all dirs
+!*/
+
+*.o
+nachos/code/userprog/nachos
+nachos/code/thread/nachos
+*.swp
+*/bin/*
+*.pdf
+*.coff
