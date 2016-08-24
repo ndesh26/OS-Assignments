@@ -6,7 +6,7 @@
 
 # Unignore all dirs
 !*/
-
+!Makefile
 *.o
 nachos/code/userprog/nachos
 nachos/code/thread/nachos
