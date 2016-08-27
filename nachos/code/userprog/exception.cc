@@ -164,7 +164,60 @@ ExceptionHandler(ExceptionType which)
        machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
        machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
        machine->WriteRegister(NextPCReg, machine->ReadRegister(NextPCReg)+4);
-    } else {
+    }
+    else if ((which == SyscallException) && (type == SYScall_GetPA)) {
+        int i, physAddr, virtAddr;
+        unsigned int vpn, offset;
+        TranslationEntry *entry;
+        unsigned int pageFrame;
+
+        virtAddr = machine->ReadRegister(4);
+    
+        // we must have either a TLB or a page table, but not both!
+        ASSERT(machine->tlb == NULL || machine->NachOSpageTable == NULL);	
+        ASSERT(machine->tlb != NULL || machine->NachOSpageTable != NULL);	
+
+        // calculate the virtual page number, and offset within the page,
+        // from the virtual address
+        vpn = (unsigned) virtAddr / PageSize;
+        offset = (unsigned) virtAddr % PageSize;
+    
+        if (machine->tlb == NULL) {		// => page table => vpn is index into table
+	    if (vpn >= machine->pageTableSize) {
+	        machine->WriteRegister(2, -1); 
+	    } else if (!machine->NachOSpageTable[vpn].valid) {
+		machine->WriteRegister(2, -1); 
+	    }
+	    entry = &(machine->NachOSpageTable[vpn]);
+        } else {
+            for (entry = NULL, i = 0; i < TLBSize; i++)
+    	        if (machine->tlb[i].valid && (machine->tlb[i].virtualPage == vpn)) {
+		    entry = &(machine->tlb[i]);			// FOUND!
+		    break;
+	        }
+	    if (entry == NULL) {				// not found
+                machine->WriteRegister(2, -1);    // really, this is a TLB fault,
+					          // the page may be in memory,
+						  // but not in the TLB
+	    }
+        }
+
+        pageFrame = entry->physicalPage;
+        // if the pageFrame is too big, there is something really wrong! 
+        // An invalid translation was loaded into the page table or TLB. 
+        if (pageFrame >= NumPhysPages) { 
+	    machine->WriteRegister(2, -1);
+        }
+        physAddr = pageFrame * PageSize + offset;
+        machine->WriteRegister(2, physAddr);
+       
+        // Advance program counters.
+        machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
+        machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
+        machine->WriteRegister(NextPCReg, machine->ReadRegister(NextPCReg)+4);
+   
+    }
+    else {
 	printf("Unexpected user mode exception %d %d\n", which, type);
 	ASSERT(FALSE);
     }
