@@ -11,6 +11,5 @@
 nachos/code/userprog/nachos
 nachos/code/thread/nachos
 *.swp
-*/bin/*
 *.pdf
 *.coff
