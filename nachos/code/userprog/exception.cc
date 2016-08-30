@@ -218,21 +218,22 @@ ExceptionHandler(ExceptionType which)
    
     }
     else if ((which == SyscallException) && (type == SYScall_Time)) {
-	//Statistics stat;
-	machine->WriteRegister(2, stats->totalTicks);
-	// Advance program counter
-	machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
-	machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
-	machine->WriteRegister(NextPCReg, machine->ReadRegister(NextPCReg)+4);
-    }
-	else if ((which == SyscallException) && (type == SYScall_Yield)){
-	// Advance program counter
-	machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
-    machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
-    machine->WriteRegister(NextPCReg, machine->ReadRegister(NextPCReg)+4);
+        //Statistics stat;
+        machine->WriteRegister(2, stats->totalTicks);
 
-	// Yield the current Thread
-	currentThread->YieldCPU();
+        // Advance program counter
+        machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
+        machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
+        machine->WriteRegister(NextPCReg, machine->ReadRegister(NextPCReg)+4);
+    }
+    else if ((which == SyscallException) && (type == SYScall_Yield)) {
+        // Advance program counter
+        machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
+        machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
+        machine->WriteRegister(NextPCReg, machine->ReadRegister(NextPCReg)+4);
+
+        // Yield the current Thread
+        currentThread->YieldCPU();
 	}
     else {
 	printf("Unexpected user mode exception %d %d\n", which, type);
