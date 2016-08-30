@@ -24,6 +24,7 @@
 					// execution stack, for detecting 
 					// stack overflows
 
+int pidCount = 0;
 //----------------------------------------------------------------------
 // NachOSThread::NachOSThread
 // 	Initialize a thread control block, so that we can then call
@@ -38,6 +39,7 @@ NachOSThread::NachOSThread(char* threadName)
     stackTop = NULL;
     stack = NULL;
     status = JUST_CREATED;
+    pid = pidCount++;
 #ifdef USER_PROGRAM
     space = NULL;
 #endif
