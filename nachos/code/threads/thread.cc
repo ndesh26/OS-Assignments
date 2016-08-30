@@ -40,6 +40,10 @@ NachOSThread::NachOSThread(char* threadName)
     stack = NULL;
     status = JUST_CREATED;
     pid = pidCount++;
+    if (pid != 0)
+        ppid = currentThread->getPid();
+    else
+        ppid = 0;
 #ifdef USER_PROGRAM
     space = NULL;
 #endif

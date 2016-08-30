@@ -102,6 +102,7 @@ class NachOSThread {
     char* getName() { return (name); }
     void Print() { printf("%s, ", name); }
     int getPid() { return pid; }
+    int getPpid() { return ppid; }
 
   private:
     // some of the private data for this class is listed above
