@@ -44,6 +44,7 @@ NachOSThread::NachOSThread(char* threadName)
         ppid = currentThread->getPid();
     else
         ppid = 0;
+    instrNum = 0; 
 #ifdef USER_PROGRAM
     space = NULL;
 #endif

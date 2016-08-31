@@ -113,12 +113,15 @@ Machine::OneInstruction(Instruction *instr)
 		TypeToReg(str->args[1], instr), TypeToReg(str->args[2], instr));
        printf("\n");
        }
-    
+   
+    //currentThread->incInstrNum();
+
     // Compute next pc, but don't install in case there's an error or branch.
     int pcAfter = registers[NextPCReg] + 4;
     int sum, diff, tmp, value;
     unsigned int rs, rt, imm;
 
+  // currentThread->incInstrNum() ; //increase number of instructions by current thread by 1
     // Execute the instruction (cf. Kane's book)
     switch (instr->opCode) {
 	
@@ -549,6 +552,7 @@ Machine::OneInstruction(Instruction *instr)
 	return;
 	
       default:
+        currentThread->decInstrNum();
 	ASSERT(FALSE);
     }
     
