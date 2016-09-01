@@ -74,8 +74,9 @@ void
 ExceptionHandler(ExceptionType which)
 {
     int type = machine->ReadRegister(2);
-    int memval, vaddr, printval, tempval, exp;
+    int memval, vaddr, printval, tempval, exp, i;
     unsigned printvalus;        // Used for printing in hex
+    char path[1000];            // To store path of the file for exec
     if (!initializedConsoleSemaphores) {
        readAvail = new Semaphore("read avail", 0);
        writeDone = new Semaphore("write done", 1);
@@ -266,6 +267,39 @@ ExceptionHandler(ExceptionType which)
         machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
         machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
         machine->WriteRegister(NextPCReg, machine->ReadRegister(NextPCReg)+4);
+    }
+    else if ((which == SyscallException) && (type == SYScall_Exec)) {
+        vaddr = machine->ReadRegister(4);
+        machine->ReadMem(vaddr, 1, &memval);
+        i = 0;
+
+        while ((*(char*)&memval) != '\0') {     //put the file address in string array
+            path[i] = *(char *)&memval;
+            vaddr++;
+            i++;
+            machine->ReadMem(vaddr, 1, &memval);
+        }
+
+        path[i] = *(char *)&memval;             //put '\0' in the end if the string
+        OpenFile *executable = fileSystem->Open(path);
+        ProcessAddrSpace *space;
+
+        if (executable == NULL) {
+	    printf("Unable to open file %s\n", path);
+	    return;
+        }
+
+        space = new ProcessAddrSpace(executable);
+        machine->WriteRegister(NextPCReg, machine->ReadRegister(NextPCReg)+4);
+        currentThread->space = space;
+
+        delete executable;			// close file
+
+        space->InitUserCPURegisters();		// set the initial register values
+        space->RestoreStateOnSwitch();		// load page table register
+
+        machine->Run();			        // jump to the progam
+        ASSERT(false);
     }
     else {
 	printf("Unexpected user mode exception %d %d\n", which, type);
