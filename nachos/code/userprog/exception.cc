@@ -260,14 +260,6 @@ ExceptionHandler(ExceptionType which)
         machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
         machine->WriteRegister(NextPCReg, machine->ReadRegister(NextPCReg)+4);
     }
-    else if ((which == SyscallException) && (type == SYScall_Sleep)) {
-        machine->WriteRegister(2, currentThread->getInstrNum());
-
-        // Advance program counter
-        machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
-        machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
-        machine->WriteRegister(NextPCReg, machine->ReadRegister(NextPCReg)+4);
-    }
     else if ((which == SyscallException) && (type == SYScall_Exec)) {
         vaddr = machine->ReadRegister(4);
         machine->ReadMem(vaddr, 1, &memval);
