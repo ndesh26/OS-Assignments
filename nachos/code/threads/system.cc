@@ -16,8 +16,9 @@ NachOSThread *threadToBeDestroyed;  		// the thread that just finished
 NachOSscheduler *scheduler;			// the ready list
 Interrupt *interrupt;			// interrupt status
 Statistics *stats;			// performance metrics
+List *threadQueue;                      // global list of threads sleep on a timer event
 Timer *timer;				// the hardware timer device,
-					// for invoking context switches
+                                        // for invoking context switches
 
 #ifdef FILESYS_NEEDED
 FileSystem  *fileSystem;
@@ -61,8 +62,21 @@ extern void Cleanup();
 static void
 TimerInterruptHandler(int dummy)
 {
+    int key;
+    NachOSThread* threadToWake;     //this thread will be waked up
+
     if (interrupt->getStatus() != IdleMode)
 	interrupt->YieldOnReturn();
+
+    if (threadQueue->IsEmpty())
+        return;
+
+    while (!(threadQueue->IsEmpty()) && (threadQueue->KeyFirst() <= stats->totalTicks)) {
+        threadToWake = (NachOSThread *)threadQueue->SortedRemove(&key);
+        IntStatus oldLevel = interrupt->SetLevel(IntOff);
+        scheduler->ThreadIsReadyToRun(threadToWake);	// ThreadIsReadyToRun assumes that interrupts
+        (void) interrupt->SetLevel(oldLevel);           // are disabled!
+    }
 }
 
 //----------------------------------------------------------------------
@@ -138,6 +152,7 @@ Initialize(int argc, char **argv)
     scheduler = new NachOSscheduler();		// initialize the ready queue
     //if (randomYield)				// start the timer (if needed)
 	timer = new Timer(TimerInterruptHandler, 0, randomYield);
+    threadQueue = new List;
 
     threadToBeDestroyed = NULL;
 

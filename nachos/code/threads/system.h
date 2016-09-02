@@ -27,6 +27,7 @@ extern NachOSThread *threadToBeDestroyed;  		// the thread that just finished
 extern NachOSscheduler *scheduler;			// the thread scheduler
 extern Interrupt *interrupt;			// interrupt status
 extern Statistics *stats;			// performance metrics
+extern List *threadQueue;                       // global list of threads sleeping on a timer event
 extern Timer *timer;				// the hardware alarm clock
 
 extern bool initializedConsoleSemaphores;       // Used to initialize the semaphores for console I/O exactly once

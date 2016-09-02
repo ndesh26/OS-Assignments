@@ -160,7 +160,7 @@ int system_call_GetPID (void);
 
 int system_call_GetPPID (void);
 
-void system_call_Sleep (unsigned);
+void system_call_Sleep (unsigned ticks);
 
 int system_call_GetTime (void);
 
