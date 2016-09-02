@@ -302,10 +302,10 @@ ExceptionHandler(ExceptionType which)
         i = (int) machine->ReadRegister(4);
 
         if (i == 0) {
-            currentThread -> YieldCPU();
+            currentThread->YieldCPU();
         }
         else {
-               threadQueue -> SortedInsert(currentThread, ticks + (stats -> totalTicks));
+               threadQueue->SortedInsert(currentThread, i + (stats->totalTicks));
                IntStatus oldLevel = interrupt->SetLevel(IntOff);	// disable interrupts
                currentThread->PutThreadToSleep();
                (void) interrupt->SetLevel(oldLevel);	                // re-enable interrupts
