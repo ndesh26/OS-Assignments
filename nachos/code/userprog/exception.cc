@@ -311,6 +311,10 @@ ExceptionHandler(ExceptionType which)
                (void) interrupt->SetLevel(oldLevel);	                // re-enable interrupts
         }
     }
+    else if((which == SyscallException) && (type == SYScall_Exit)) {
+	int exitStatus = machine->ReadRegister(4);
+	currentThread->FinishThread();
+    }
     else {
 	printf("Unexpected user mode exception %d %d\n", which, type);
 	ASSERT(FALSE);
