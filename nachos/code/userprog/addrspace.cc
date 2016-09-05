@@ -20,6 +20,9 @@
 #include "addrspace.h"
 #include "noff.h"
 
+
+int totalPage = 0;
+
 //----------------------------------------------------------------------
 // SwapHeader
 // 	Do little endian to big endian conversion on the bytes in the 
@@ -86,7 +89,7 @@ ProcessAddrSpace::ProcessAddrSpace(OpenFile *executable)
     NachOSpageTable = new TranslationEntry[numPagesInVM];
     for (i = 0; i < numPagesInVM; i++) {
 	NachOSpageTable[i].virtualPage = i;	// for now, virtual page # = phys page #
-	NachOSpageTable[i].physicalPage = i;
+	NachOSpageTable[i].physicalPage = i + totalPage;
 	NachOSpageTable[i].valid = TRUE;
 	NachOSpageTable[i].use = FALSE;
 	NachOSpageTable[i].dirty = FALSE;
@@ -97,7 +100,7 @@ ProcessAddrSpace::ProcessAddrSpace(OpenFile *executable)
     
 // zero out the entire address space, to zero the unitialized data segment 
 // and the stack segment
-    bzero(machine->mainMemory, size);
+    bzero(machine->mainMemory+totalPage*PageSize, size);
 
 // then, copy in the code and data segments into memory
     if (noffH.code.size > 0) {
@@ -113,8 +116,50 @@ ProcessAddrSpace::ProcessAddrSpace(OpenFile *executable)
 			noffH.initData.size, noffH.initData.inFileAddr);
     }
 
+    totalPage += numPagesInVM;
+
 }
 
+ProcessAddrSpace::ProcessAddrSpace(unsigned int noOfPages,unsigned int startOfPhyAddr)
+{
+    NoffHeader noffH;
+    unsigned int i, size;
+
+    size = noOfPages * PageSize;
+    numPagesInVM = noOfPages; 
+
+    ASSERT(noOfPages <= NumPhysPages);		// check we're not trying
+						// to run anything too big --
+						// at least until we have
+						// virtual memory
+
+    DEBUG('a', "Initializing address space, num pages %d, size %d\n", 
+					numPagesInVM, size);
+// first, set up the translation 
+    NachOSpageTable = new TranslationEntry[numPagesInVM];
+    for (i = 0; i < numPagesInVM; i++) {
+	NachOSpageTable[i].virtualPage = i;	// for now, virtual page # = phys page #
+	NachOSpageTable[i].physicalPage = i + totalPage;
+	NachOSpageTable[i].valid = TRUE;
+	NachOSpageTable[i].use = FALSE;
+	NachOSpageTable[i].dirty = FALSE;
+	NachOSpageTable[i].readOnly = FALSE;  // if the code segment was entirely on 
+					// a separate page, we could set its 
+					// pages to be read-only
+    }
+    
+// zero out the entire address space, to zero the unitialized data segment 
+// and the stack segment
+//    bzero(machine->mainMemory, size);
+    
+    for(i = 0; i < size; i++) {
+        machine->mainMemory[i + totalPage*PageSize]=machine[ i +startOfPhyAddr];
+
+    }
+    
+    totalPage += numPagesInVM;
+
+}
 //----------------------------------------------------------------------
 // ProcessAddrSpace::~ProcessAddrSpace
 // 	Dealloate an address space.  Nothing for now!
