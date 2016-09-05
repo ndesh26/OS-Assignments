@@ -24,6 +24,7 @@ class ProcessAddrSpace {
 					// initializing it with the program
 					// stored in the file "executable"
     ~ProcessAddrSpace();			// De-allocate an address space
+    ProcessAddrSpace(unsigned int noOfPages, unsigned int startOfPhyAddr);
 
     void InitUserCPURegisters();		// Initialize user-level CPU registers,
 					// before jumping to user code

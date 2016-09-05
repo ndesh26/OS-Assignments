@@ -27,7 +27,7 @@ class NachOSscheduler {
 					// list, if any, and return thread.
     void Schedule(NachOSThread* nextThread);	// Cause nextThread to start running
     void Print();			// Print contents of ready list
-    
+    int IsEmpty();                      // To check if the ready list is empty
   private:
     List *readyThreadList;  		// queue of threads that are ready to run,
 				// but not running

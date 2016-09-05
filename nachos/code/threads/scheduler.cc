@@ -145,3 +145,9 @@ NachOSscheduler::Print()
     printf("Ready list contents:\n");
     readyThreadList->Mapcar((VoidFunctionPtr) ThreadPrint);
 }
+
+int
+NachOSscheduler::IsEmpty()
+{
+    return readyThreadList->IsEmpty();
+}

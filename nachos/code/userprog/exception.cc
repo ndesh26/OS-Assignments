@@ -69,7 +69,21 @@ static void ConvertIntToHex (unsigned v, Console *console)
       console->PutChar('a'+x-10);
    }
 }
+void
+StackInitialize(int which)
+{
+    if (threadToBeDestroyed != NULL) {
+        delete threadToBeDestroyed;
+	threadToBeDestroyed = NULL;
+    }
 
+    if (currentThread->space != NULL) {		// if there is an address space
+        currentThread->RestoreUserState();     // to restore, do it.
+        currentThread->space->RestoreStateOnSwitch();
+    }
+
+    machine->Run();
+}
 void
 ExceptionHandler(ExceptionType which)
 {
@@ -313,7 +327,27 @@ ExceptionHandler(ExceptionType which)
     }
     else if((which == SyscallException) && (type == SYScall_Exit)) {
 	int exitStatus = machine->ReadRegister(4);
+        if(scheduler->IsEmpty())
+            interrupt->Halt();
 	currentThread->FinishThread();
+    }
+    else if((which == SyscallException) && (type == SYScall_Fork)) {
+        NachOSThread *childThread = new NachOSThread("child thread");
+        ProcessAddrSpace *space;
+
+        space = new ProcessAddrSpace(machine->pageTableSize,
+                                     machine->NachOSpageTable[0].physicalPage);
+        childThread->space = space;
+
+        // Advance program counter
+        machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
+        machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
+        machine->WriteRegister(NextPCReg, machine->ReadRegister(NextPCReg)+4);
+
+        machine->WriteRegister(2, 0); // So that the saved user state for the child
+        childThread->SaveUserState(); // has 0 as return value and incresed PCs
+        machine->WriteRegister(2, childThread->getPid()); // setting return for parent process
+        childThread->ThreadFork(StackInitialize, 0);
     }
     else {
 	printf("Unexpected user mode exception %d %d\n", which, type);

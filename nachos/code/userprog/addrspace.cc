@@ -78,7 +78,7 @@ ProcessAddrSpace::ProcessAddrSpace(OpenFile *executable)
     numPagesInVM = divRoundUp(size, PageSize);
     size = numPagesInVM * PageSize;
 
-    ASSERT(numPagesInVM <= NumPhysPages);		// check we're not trying
+    ASSERT(totalPage + numPagesInVM <= NumPhysPages);		// check we're not trying
 						// to run anything too big --
 						// at least until we have
 						// virtual memory
@@ -122,13 +122,13 @@ ProcessAddrSpace::ProcessAddrSpace(OpenFile *executable)
 
 ProcessAddrSpace::ProcessAddrSpace(unsigned int noOfPages,unsigned int startOfPhyAddr)
 {
-    NoffHeader noffH;
-    unsigned int i, size;
+    unsigned int i, size, startAddr;
 
     size = noOfPages * PageSize;
     numPagesInVM = noOfPages; 
+    startAddr = totalPage * PageSize;
 
-    ASSERT(noOfPages <= NumPhysPages);		// check we're not trying
+    ASSERT(totalPage + numPagesInVM <= NumPhysPages);		// check we're not trying
 						// to run anything too big --
 						// at least until we have
 						// virtual memory
@@ -138,7 +138,7 @@ ProcessAddrSpace::ProcessAddrSpace(unsigned int noOfPages,unsigned int startOfPh
 // first, set up the translation 
     NachOSpageTable = new TranslationEntry[numPagesInVM];
     for (i = 0; i < numPagesInVM; i++) {
-	NachOSpageTable[i].virtualPage = i;	// for now, virtual page # = phys page #
+	NachOSpageTable[i].virtualPage = i;
 	NachOSpageTable[i].physicalPage = i + totalPage;
 	NachOSpageTable[i].valid = TRUE;
 	NachOSpageTable[i].use = FALSE;
@@ -148,13 +148,8 @@ ProcessAddrSpace::ProcessAddrSpace(unsigned int noOfPages,unsigned int startOfPh
 					// pages to be read-only
     }
     
-// zero out the entire address space, to zero the unitialized data segment 
-// and the stack segment
-//    bzero(machine->mainMemory, size);
-    
     for(i = 0; i < size; i++) {
-        machine->mainMemory[i + totalPage*PageSize]=machine[ i +startOfPhyAddr];
-
+        machine->mainMemory[i + startAddr] = machine->mainMemory[i + startOfPhyAddr];
     }
     
     totalPage += numPagesInVM;
