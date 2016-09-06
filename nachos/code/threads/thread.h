@@ -55,7 +55,7 @@
 // WATCH OUT IF THIS ISN'T BIG ENOUGH!!!!!
 #define StackSize	(4 * 1024)	// in words
 
-
+#define MAX_THREADS 1000
 // Thread state
 enum ThreadStatus { JUST_CREATED, RUNNING, READY, BLOCKED };
 
@@ -106,7 +106,10 @@ class NachOSThread {
     int getInstrNum() { return instrNum; }
     void incInstrNum() { instrNum++; }
     void decInstrNum() { instrNum--; }
-
+    int getChildStatus(int index) { return childStatus[index]; } 
+    void setChildStatus(int index, int status) { childStatus[index] = status; }
+    int getChildExitCode(int index) { return childExitCode[index]; }
+    NachOSThread* getParent() { return parent; }
   private:
     // some of the private data for this class is listed above
     
@@ -123,6 +126,11 @@ class NachOSThread {
     int pid, ppid;			// My pid and my parent's pid
     int instrNum ;                      // Number of instructions executed by thread
 
+    int* childPid;
+    int* childStatus;
+    int* childExitCode;
+    
+    NachOSThread* parent;
 #ifdef USER_PROGRAM
 // A thread running a user program actually has *two* sets of CPU registers -- 
 // one for its state while executing user code, one for its state 
@@ -133,6 +141,8 @@ class NachOSThread {
   public:
     void SaveUserState();		// save user-level register state
     void RestoreUserState();		// restore user-level register state
+    int getChildIndex(int pid);
+    void addChild(int child_pid);
 
     ProcessAddrSpace *space;			// User code this thread is running.
 #endif

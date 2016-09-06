@@ -39,12 +39,21 @@ NachOSThread::NachOSThread(char* threadName)
     stackTop = NULL;
     stack = NULL;
     status = JUST_CREATED;
-    pid = pidCount++;
-    if (pid != 0)
+    pid = ++pidCount;
+    if (pid != 1)
         ppid = currentThread->getPid();
     else
         ppid = 0;
     instrNum = 0;
+    childPid = new int[MAX_THREADS]();
+    childStatus = new int[MAX_THREADS]();
+    childExitCode = new int[MAX_THREADS]();
+    if(pid != 1) 
+        currentThread->addChild(pid); 
+    if(pid != 1)
+        parent = currentThread;
+    else 
+        parent = NULL;
 #ifdef USER_PROGRAM
     space = NULL;
 #endif
@@ -323,5 +332,27 @@ NachOSThread::RestoreUserState()
 {
     for (int i = 0; i < NumTotalRegs; i++)
 	machine->WriteRegister(i, userRegisters[i]);
+}
+
+int
+NachOSThread::getChildIndex(int pi)
+{
+    for (int i = 0; i < MAX_THREADS; i++) {
+        if(childPid[i] == pi)
+            return i;
+    }
+    return -1;
+}
+void
+NachOSThread::addChild(int child_pid)
+{
+    int i;
+    for(i = 0; i < MAX_THREADS; i++) {
+        if(childPid[i] == 0)
+            break;
+    } 
+
+    childPid[i] = child_pid;
+    childStatus[i] = 0;
 }
 #endif
