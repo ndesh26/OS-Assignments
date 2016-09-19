@@ -298,6 +298,27 @@ NachOSThread::AllocateThreadStack (VoidFunctionPtr func, int arg)
     machineState[InitialArgState] = arg;
     machineState[WhenDonePCState] = (int) ThreadFinish;
 }
+int
+NachOSThread::getChildIndex(int pi)
+{
+    for (int i = 0; i < MAX_THREADS; i++) {
+        if(childPid[i] == pi)
+            return 0;
+    }
+    return -1;
+}
+void
+NachOSThread::addChild(int child_pid)
+{
+    int i;
+    for(i = 0; i < MAX_THREADS; i++) {
+        if(childPid[i] == 0)
+            break;
+    }
+
+    childPid[i] = child_pid;
+    childStatus[i] = 0;
+}
 
 #ifdef USER_PROGRAM
 #include "machine.h"
@@ -334,25 +355,4 @@ NachOSThread::RestoreUserState()
 	machine->WriteRegister(i, userRegisters[i]);
 }
 
-int
-NachOSThread::getChildIndex(int pi)
-{
-    for (int i = 0; i < MAX_THREADS; i++) {
-        if(childPid[i] == pi)
-            return i;
-    }
-    return -1;
-}
-void
-NachOSThread::addChild(int child_pid)
-{
-    int i;
-    for(i = 0; i < MAX_THREADS; i++) {
-        if(childPid[i] == 0)
-            break;
-    } 
-
-    childPid[i] = child_pid;
-    childStatus[i] = 0;
-}
 #endif

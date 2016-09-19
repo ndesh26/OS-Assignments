@@ -339,7 +339,8 @@ ExceptionHandler(ExceptionType which)
         }
         if(scheduler->IsEmpty())
             interrupt->Halt();
-	currentThread->FinishThread();
+        currentThread->FinishThread();
+
     }
     else if((which == SyscallException) && (type == SYScall_Fork)) {
         NachOSThread *childThread = new NachOSThread("child thread");

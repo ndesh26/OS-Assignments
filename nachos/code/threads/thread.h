@@ -110,6 +110,8 @@ class NachOSThread {
     void setChildStatus(int index, int status) { childStatus[index] = status; }
     int getChildExitCode(int index) { return childExitCode[index]; }
     NachOSThread* getParent() { return parent; }
+    int getChildIndex(int pid);
+    void addChild(int child_pid);
   private:
     // some of the private data for this class is listed above
     
@@ -141,8 +143,6 @@ class NachOSThread {
   public:
     void SaveUserState();		// save user-level register state
     void RestoreUserState();		// restore user-level register state
-    int getChildIndex(int pid);
-    void addChild(int child_pid);
 
     ProcessAddrSpace *space;			// User code this thread is running.
 #endif
