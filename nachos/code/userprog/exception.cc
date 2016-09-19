@@ -328,7 +328,7 @@ ExceptionHandler(ExceptionType which)
     else if ((which == SyscallException) && (type == SYScall_Exit)) {
 	int exitStatus = machine->ReadRegister(4);
         NachOSThread* parent = currentThread->getParent();
-        if (parent != NULL) {
+        if (parent != NULL && parent->getPid() > 0) {
             int index = parent->getChildIndex(currentThread->getPid());
             if (index != -1) {
                 if (parent->getChildStatus(index) == 2) {
@@ -367,7 +367,7 @@ ExceptionHandler(ExceptionType which)
         machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
         machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
         machine->WriteRegister(NextPCReg, machine->ReadRegister(NextPCReg)+4);
-     
+        
         int index = currentThread->getChildIndex(i);
         if(index == -1) {
             machine->WriteRegister(2, -1);
@@ -387,7 +387,7 @@ ExceptionHandler(ExceptionType which)
         }
     }
     else {
-	printf("Unexpected user mode exception %d %d\n", which, type);
+	printf("Unexpected user mode exception %d %d %d\n", which, type, which == SyscallException);
 	ASSERT(FALSE);
     }
 }
