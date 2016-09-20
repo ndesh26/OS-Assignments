@@ -24,6 +24,7 @@ extern void Cleanup();				// Cleanup, called when
 
 extern NachOSThread *currentThread;			// the thread holding the CPU
 extern NachOSThread *threadToBeDestroyed;  		// the thread that just finished
+extern NachOSThread **processTable;
 extern NachOSscheduler *scheduler;			// the thread scheduler
 extern Interrupt *interrupt;			// interrupt status
 extern Statistics *stats;			// performance metrics

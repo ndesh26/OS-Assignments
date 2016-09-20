@@ -13,6 +13,7 @@
 
 NachOSThread *currentThread;			// the thread we are running now
 NachOSThread *threadToBeDestroyed;  		// the thread that just finished
+NachOSThread **processTable;
 NachOSscheduler *scheduler;			// the ready list
 Interrupt *interrupt;			// interrupt status
 Statistics *stats;			// performance metrics
@@ -153,6 +154,7 @@ Initialize(int argc, char **argv)
     //if (randomYield)				// start the timer (if needed)
 	timer = new Timer(TimerInterruptHandler, 0, randomYield);
     threadQueue = new List;
+    processTable = new NachOSThread* [1000];
 
     threadToBeDestroyed = NULL;
 

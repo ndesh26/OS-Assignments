@@ -327,16 +327,33 @@ ExceptionHandler(ExceptionType which)
     }
     else if ((which == SyscallException) && (type == SYScall_Exit)) {
 	int exitStatus = machine->ReadRegister(4);
-        NachOSThread* parent = currentThread->getParent();
-        if (parent != NULL && parent->getPid() > 0) {
+        int ppid = currentThread->getPpid();
+        int pid = currentThread->getPid();
+        NachOSThread* parent = NULL;
+
+        while (i < 1000 && processTable[i] != NULL && processTable[i]->getPid() != ppid) i++;
+        if(i < 1000)
+            parent = processTable[i];
+
+        if (parent != NULL) {
+            printf("%d", currentThread->getPid());
             int index = parent->getChildIndex(currentThread->getPid());
-            if (index != -1) {
-                if (parent->getChildStatus(index) == 2) {
-                    parent->setChildStatus(index, 1); 
+            if (index == -1) {
+                machine->WriteRegister(2, -1);
+            }
+            else {
+                int childStatus = parent->getChildStatus(index);
+                parent->setChildStatus(index, CHILD_FINISHED);
+                if (childStatus == PARENT_WAITING) {      // Child is running
                     scheduler->ThreadIsReadyToRun(parent);
                 }
             }
         }
+ 
+        while (i < 1000 && processTable[i] != NULL && processTable[i]->getPid() != pid) i++;
+        if(i < 1000)
+            processTable[i] = NULL;
+
         if(scheduler->IsEmpty())
             interrupt->Halt();
         currentThread->FinishThread();
@@ -375,7 +392,7 @@ ExceptionHandler(ExceptionType which)
         else {
             int childStatus = currentThread->getChildStatus(index); 
             if(childStatus == 0) {      // Child is running
-                currentThread->setChildStatus(index, 2); 
+                //currentThread->setChildStatus(index, 2); 
                 IntStatus oldLevel = interrupt->SetLevel(IntOff);	// disable interrupts
                 currentThread->PutThreadToSleep();
                 (void) interrupt->SetLevel(oldLevel);	                // re-enable interrupts
