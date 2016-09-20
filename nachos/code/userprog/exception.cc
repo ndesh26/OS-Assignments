@@ -390,9 +390,9 @@ ExceptionHandler(ExceptionType which)
             machine->WriteRegister(2, -1);
         }
         else {
-            int childStatus = currentThread->getChildStatus(index); 
-            if(childStatus == 0) {      // Child is running
-                //currentThread->setChildStatus(index, 2); 
+            ChildStatus childStatus = currentThread->getChildStatus(index); 
+            if(childStatus == CHILD_LIVE) {      // Child is running
+                currentThread->setChildStatus(index, PARENT_WAITING); 
                 IntStatus oldLevel = interrupt->SetLevel(IntOff);	// disable interrupts
                 currentThread->PutThreadToSleep();
                 (void) interrupt->SetLevel(oldLevel);	                // re-enable interrupts
