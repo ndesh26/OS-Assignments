@@ -19,6 +19,7 @@ Interrupt *interrupt;			// interrupt status
 Statistics *stats;			// performance metrics
 List *threadQueue;                      // global list of threads sleep on a timer event
 Timer *timer;				// the hardware timer device,
+int threadCount;
                                         // for invoking context switches
 
 #ifdef FILESYS_NEEDED
@@ -155,15 +156,21 @@ Initialize(int argc, char **argv)
 	timer = new Timer(TimerInterruptHandler, 0, randomYield);
     threadQueue = new List;
     processTable = new NachOSThread* [1000];
+    int i = 0;
+    while(i < 1000) 
+    {
+        processTable[i] = NULL;
+        i++;
+    }
 
     threadToBeDestroyed = NULL;
-
+    threadCount = 0;
     // We didn't explicitly allocate the current thread we are running in.
     // But if it ever tries to give up the CPU, we better have a Thread
     // object to save its state. 
     currentThread = new NachOSThread("main");		
     currentThread->setStatus(RUNNING);
-
+    processTable[0] = currentThread;
     interrupt->Enable();
     CallOnUserAbort(Cleanup);			// if user hits ctl-C
     

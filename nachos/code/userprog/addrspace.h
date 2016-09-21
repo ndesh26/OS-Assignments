@@ -31,7 +31,8 @@ class ProcessAddrSpace {
 
     void SaveStateOnSwitch();			// Save/restore address space-specific
     void RestoreStateOnSwitch();		// info on a context switch 
-
+    int getNumPages();
+    int getStartAddr();
   private:
     TranslationEntry *NachOSpageTable;	// Assume linear page table translation
 					// for now!

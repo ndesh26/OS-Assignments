@@ -25,7 +25,7 @@
 					// stack overflows
 
 int pidCount = 0;
-int threadCount = 0;
+//int threadCount = 0;
 //----------------------------------------------------------------------
 // NachOSThread::NachOSThread
 // 	Initialize a thread control block, so that we can then call
@@ -41,7 +41,7 @@ NachOSThread::NachOSThread(char* threadName)
     stack = NULL;
     status = JUST_CREATED;
     pid = ++pidCount;
-    threadCount++;
+    threadCount = threadCount + 1;
     if (pid != 1)
         ppid = currentThread->getPid();
     else
@@ -51,12 +51,13 @@ NachOSThread::NachOSThread(char* threadName)
     childStatus = new ChildStatus[MAX_THREADS];
     childExitCode = new int[MAX_THREADS];
     if(pid != 1) 
+    { 
         currentThread->addChild(pid); 
-    int i = 0;
-    while(processTable[i] != NULL && i < 1000)
-        i++;
-    processTable[i] = this;
-    parent_waiting = false;
+        DEBUG('f', "Child Process pid: %d added to parent process: %d\n", pid, ppid);
+    }
+    for(int i = 0; i < MAX_THREADS; i++) {
+        childPid[i] = 0;
+    }
 #ifdef USER_PROGRAM
     space = NULL;
 #endif
@@ -77,8 +78,7 @@ NachOSThread::NachOSThread(char* threadName)
 NachOSThread::~NachOSThread()
 {
     DEBUG('t', "Deleting thread \"%s\"\n", name);
-
-    threadCount--;
+    threadCount = threadCount - 1;
     ASSERT(this != currentThread);
     if (stack != NULL)
 	DeallocBoundedArray((char *) stack, StackSize * sizeof(int));

@@ -76,12 +76,12 @@ StackInitialize(int which)
         delete threadToBeDestroyed;
 	threadToBeDestroyed = NULL;
     }
-
+#ifdef USER_PROGRAM
     if (currentThread->space != NULL) {		// if there is an address space
         currentThread->RestoreUserState();     // to restore, do it.
         currentThread->space->RestoreStateOnSwitch();
     }
-
+#endif
     machine->Run();
 }
 void
@@ -331,18 +331,24 @@ ExceptionHandler(ExceptionType which)
         int pid = currentThread->getPid();
         NachOSThread* parent = NULL;
 
-        while (i < 1000 && processTable[i] != NULL && processTable[i]->getPid() != ppid) i++;
-        if(i < 1000)
-            parent = processTable[i];
+        DEBUG('f', "Exit called for process pid: %d  with parent: %d\n",pid, ppid);
+        for (i = 0; i < 1000; i++) {
+            if (processTable[i] != NULL && processTable[i]->getPid() == ppid) 
+                break;
+            else i++;
+        }
 
+        if(i < 1000) {
+            parent = processTable[i];
+            DEBUG('f', "Parent found with pid: %d for child: %d\n",parent->getPid(), pid);
+        }
         if (parent != NULL) {
-            printf("%d", currentThread->getPid());
             int index = parent->getChildIndex(currentThread->getPid());
             if (index == -1) {
                 machine->WriteRegister(2, -1);
             }
             else {
-                int childStatus = parent->getChildStatus(index);
+                ChildStatus childStatus = parent->getChildStatus(index);
                 parent->setChildStatus(index, CHILD_FINISHED);
                 if (childStatus == PARENT_WAITING) {      // Child is running
                     scheduler->ThreadIsReadyToRun(parent);
@@ -350,27 +356,36 @@ ExceptionHandler(ExceptionType which)
             }
         }
  
-        while (i < 1000 && processTable[i] != NULL && processTable[i]->getPid() != pid) i++;
+        for (i = 0; i < 1000; i++) {
+            if (processTable[i] != NULL && processTable[i]->getPid() == pid) 
+                break;
+            else i++;
+        }
+        
         if(i < 1000)
             processTable[i] = NULL;
 
-        if(scheduler->IsEmpty())
+        if(threadCount == 1)
             interrupt->Halt();
         currentThread->FinishThread();
 
     }
     else if((which == SyscallException) && (type == SYScall_Fork)) {
-        NachOSThread *childThread = new NachOSThread("child thread");
-        ProcessAddrSpace *space;
-
-        space = new ProcessAddrSpace(machine->pageTableSize,
-                                     machine->NachOSpageTable[0].physicalPage);
-        childThread->space = space;
-
         // Advance program counter
         machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
         machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
         machine->WriteRegister(NextPCReg, machine->ReadRegister(NextPCReg)+4);
+
+        NachOSThread *childThread = new NachOSThread("child thread");
+        ProcessAddrSpace *space;
+        
+        i = 0;
+        while(processTable[i] != NULL && i < 1000) i++;
+        processTable[i] = childThread; 
+
+        space = new ProcessAddrSpace(currentThread->space->getNumPages(),
+                                     currentThread->space->getStartAddr());
+        childThread->space = space;
 
         machine->WriteRegister(2, 0); // So that the saved user state for the child
         childThread->SaveUserState(); // has 0 as return value and incresed PCs
@@ -379,11 +394,6 @@ ExceptionHandler(ExceptionType which)
     }
     else if((which == SyscallException) && (type == SYScall_Join)) {
         i = machine->ReadRegister(4);
-   
-        // Advance program counter
-        machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
-        machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
-        machine->WriteRegister(NextPCReg, machine->ReadRegister(NextPCReg)+4);
         
         int index = currentThread->getChildIndex(i);
         if(index == -1) {
@@ -391,17 +401,25 @@ ExceptionHandler(ExceptionType which)
         }
         else {
             ChildStatus childStatus = currentThread->getChildStatus(index); 
-            if(childStatus == CHILD_LIVE) {      // Child is running
-                currentThread->setChildStatus(index, PARENT_WAITING); 
-                IntStatus oldLevel = interrupt->SetLevel(IntOff);	// disable interrupts
-                currentThread->PutThreadToSleep();
-                (void) interrupt->SetLevel(oldLevel);	                // re-enable interrupts
-
-            }
-            else if(childStatus == 1) { // Child is Terminated
+            if(childStatus == CHILD_FINISHED) { // Child is Terminated
                 machine->WriteRegister(2, currentThread->getChildExitCode(index));
             }
+            else if(childStatus == CHILD_LIVE) {      // Child is running
+                currentThread->setChildStatus(index, PARENT_WAITING); 
+                childStatus = currentThread->getChildStatus(index); 
+                while(childStatus == PARENT_WAITING) {
+                    IntStatus oldLevel = interrupt->SetLevel(IntOff);	// disable interrupts
+                    currentThread->PutThreadToSleep();
+                    (void) interrupt->SetLevel(oldLevel);	                // re-enable interrupts
+                    childStatus = currentThread->getChildStatus(index); 
+                }
+            }
         }
+        // Advance program counter
+        machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
+        machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
+        machine->WriteRegister(NextPCReg, machine->ReadRegister(NextPCReg)+4);
+
     }
     else {
 	printf("Unexpected user mode exception %d %d %d\n", which, type, which == SyscallException);

@@ -122,19 +122,19 @@ ProcessAddrSpace::ProcessAddrSpace(OpenFile *executable)
 
 ProcessAddrSpace::ProcessAddrSpace(unsigned int noOfPages,unsigned int startOfPhyAddr)
 {
-    unsigned int i, size, startAddr;
+    unsigned int i, size, startAddr, parentAddr;
 
     size = noOfPages * PageSize;
     numPagesInVM = noOfPages; 
     startAddr = totalPage * PageSize;
-
+    parentAddr = startOfPhyAddr * PageSize;
     ASSERT(totalPage + numPagesInVM <= NumPhysPages);		// check we're not trying
 						// to run anything too big --
 						// at least until we have
 						// virtual memory
 
-    DEBUG('a', "Initializing address space, num pages %d, size %d\n", 
-					numPagesInVM, size);
+    DEBUG('a', "Initializing address space, num pages %d, size %d and totalPage: %d\n", 
+					numPagesInVM, size, totalPage);
 // first, set up the translation 
     NachOSpageTable = new TranslationEntry[numPagesInVM];
     for (i = 0; i < numPagesInVM; i++) {
@@ -149,7 +149,7 @@ ProcessAddrSpace::ProcessAddrSpace(unsigned int noOfPages,unsigned int startOfPh
     }
     
     for(i = 0; i < size; i++) {
-        machine->mainMemory[i + startAddr] = machine->mainMemory[i + startOfPhyAddr];
+        machine->mainMemory[i + startAddr] = machine->mainMemory[i + parentAddr];
     }
     
     totalPage += numPagesInVM;
@@ -220,4 +220,13 @@ void ProcessAddrSpace::RestoreStateOnSwitch()
 {
     machine->NachOSpageTable = NachOSpageTable;
     machine->pageTableSize = numPagesInVM;
+}
+
+int ProcessAddrSpace::getNumPages()
+{
+    return numPagesInVM; 
+}
+int ProcessAddrSpace::getStartAddr()
+{
+    return NachOSpageTable[0].physicalPage;
 }
