@@ -358,6 +358,7 @@ ExceptionHandler(ExceptionType which)
                     IntStatus oldLevel = interrupt->SetLevel(IntOff);	        // disable interrupts
                     currentThread->PutThreadToSleep();
                     (void) interrupt->SetLevel(oldLevel);	                // re-enable interrupts
+                    machine->WriteRegister(2, currentThread->getChildExitCode(index));
                 }
             }
             incrementPC();
