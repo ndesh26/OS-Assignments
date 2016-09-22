@@ -221,12 +221,3 @@ void ProcessAddrSpace::RestoreStateOnSwitch()
     machine->NachOSpageTable = NachOSpageTable;
     machine->pageTableSize = numPagesInVM;
 }
-
-int ProcessAddrSpace::getNumPages()
-{
-    return numPagesInVM; 
-}
-int ProcessAddrSpace::getStartAddr()
-{
-    return NachOSpageTable[0].physicalPage;
-}
