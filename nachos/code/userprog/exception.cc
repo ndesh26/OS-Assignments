@@ -303,6 +303,7 @@ ExceptionHandler(ExceptionType which)
                 else {
                     ChildStatus childStatus = parent->getChildStatus(index);
                     parent->setChildStatus(index, CHILD_FINISHED);
+                    parent->setChildExitCode(index, exitStatus);
                     if (childStatus == PARENT_WAITING) {      
                         scheduler->ThreadIsReadyToRun(parent);
                         DEBUG('f', "Parent with pid: %d waked by child with pid: %d\n",parent->getPid(), pid);

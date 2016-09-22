@@ -109,6 +109,7 @@ class NachOSThread {
     ChildStatus getChildStatus(int index) { return childStatus[index]; } 
     void setChildStatus(int index, ChildStatus status) { childStatus[index] = status; }
     int getChildExitCode(int index) { return childExitCode[index]; }
+    int setChildExitCode(int index, int exitCode) { childExitCode[index] = exitCode; }
     int getChildIndex(int pid);
     void addChild(int child_pid);
   private:
