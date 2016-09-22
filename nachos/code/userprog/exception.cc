@@ -87,7 +87,7 @@ StackInitialize(int which)
 }
 
 //Increment The PC counter
-void 
+void
 incrementPC()
 {
     // Advance program counters.
@@ -112,7 +112,7 @@ ExceptionHandler(ExceptionType which)
 
     if ((which == SyscallException) && (type == SYScall_Halt)) {
 	    DEBUG('a', "Shutdown, initiated by user program.\n");
-   	    interrupt->Halt();
+            interrupt->Halt();
     }
     else if ((which == SyscallException) && (type == SYScall_PrintInt)) {
             printval = machine->ReadRegister(4);
@@ -204,7 +204,7 @@ ExceptionHandler(ExceptionType which)
             pageFrame = entry->physicalPage;
             // if the pageFrame is too big, there is something really wrong!
             // An invalid translation was loaded into the page table or TLB.
-            if (pageFrame >= NumPhysPages) { 
+            if (pageFrame >= NumPhysPages) {
 	        machine->WriteRegister(2, -1);
             }
             physAddr = pageFrame * PageSize + offset;
@@ -289,7 +289,7 @@ ExceptionHandler(ExceptionType which)
 
             DEBUG('f', "Exit called for process pid: %d  with parent: %d\n",pid, ppid);
             for (i = 0; i < 1000; i++) {
-                if (processTable[i] != NULL && processTable[i]->getPid() == ppid) { 
+                if (processTable[i] != NULL && processTable[i]->getPid() == ppid) {
                     parent = processTable[i];
                     break;
                 }
@@ -304,19 +304,19 @@ ExceptionHandler(ExceptionType which)
                     ChildStatus childStatus = parent->getChildStatus(index);
                     parent->setChildStatus(index, CHILD_FINISHED);
                     parent->setChildExitCode(index, exitStatus);
-                    if (childStatus == PARENT_WAITING) {      
+                    if (childStatus == PARENT_WAITING) {
                         scheduler->ThreadIsReadyToRun(parent);
                         DEBUG('f', "Parent with pid: %d waked by child with pid: %d\n",parent->getPid(), pid);
                     }
                 }
             }
- 
+
             for (i = 0; i < 1000; i++) {
-                if (processTable[i] != NULL && processTable[i]->getPid() == pid) { 
+                if (processTable[i] != NULL && processTable[i]->getPid() == pid) {
                     DEBUG('f',"Removing process with pid %d from processTable\n", processTable[i]->getPid());
                     processTable[i] = NULL;
                     break;
-                }   
+                }
             }
 
             if(threadCount == 1)
@@ -327,11 +327,11 @@ ExceptionHandler(ExceptionType which)
     else if((which == SyscallException) && (type == SYScall_Fork)) {
             incrementPC();
             NachOSThread *childThread = new NachOSThread("child thread");
-        
+
             i = 0;
             while(processTable[i] != NULL && i < 1000) i++;
             if (i < 1000) {
-                processTable[i] = childThread; 
+                processTable[i] = childThread;
                 DEBUG('f', "Process with pid %d added to processTable\n",childThread->getPid());
             }
             childThread->space = new ProcessAddrSpace(machine->pageTableSize,
@@ -344,13 +344,13 @@ ExceptionHandler(ExceptionType which)
     }
     else if((which == SyscallException) && (type == SYScall_Join)) {
             i = machine->ReadRegister(4);
-        
+
             int index = currentThread->getChildIndex(i);
             if(index == -1) {
                 machine->WriteRegister(2, -1);
             }
             else {
-                ChildStatus childStatus = currentThread->getChildStatus(index); 
+                ChildStatus childStatus = currentThread->getChildStatus(index);
                 if(childStatus == CHILD_FINISHED) {                             // Child is Terminated
                     machine->WriteRegister(2, currentThread->getChildExitCode(index));
                 }

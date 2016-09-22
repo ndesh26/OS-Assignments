@@ -25,7 +25,6 @@
 					// stack overflows
 
 int pidCount = 0;
-//int threadCount = 0;
 //----------------------------------------------------------------------
 // NachOSThread::NachOSThread
 // 	Initialize a thread control block, so that we can then call
@@ -50,9 +49,9 @@ NachOSThread::NachOSThread(char* threadName)
     childPid = new int[MAX_THREADS];
     childStatus = new ChildStatus[MAX_THREADS];
     childExitCode = new int[MAX_THREADS];
-    if(pid != 1) 
-    { 
-        currentThread->addChild(pid); 
+    if(pid != 1)
+    {
+        currentThread->addChild(pid);
         DEBUG('f', "Child Process pid: %d added to parent process: %d\n", pid, ppid);
     }
     for(int i = 0; i < MAX_THREADS; i++) {

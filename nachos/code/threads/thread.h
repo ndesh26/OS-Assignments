@@ -106,7 +106,7 @@ class NachOSThread {
     int getInstrNum() { return instrNum; }
     void incInstrNum() { instrNum++; }
     void decInstrNum() { instrNum--; }
-    ChildStatus getChildStatus(int index) { return childStatus[index]; } 
+    ChildStatus getChildStatus(int index) { return childStatus[index]; }
     void setChildStatus(int index, ChildStatus status) { childStatus[index] = status; }
     int getChildExitCode(int index) { return childExitCode[index]; }
     int setChildExitCode(int index, int exitCode) { childExitCode[index] = exitCode; }
@@ -114,7 +114,7 @@ class NachOSThread {
     void addChild(int child_pid);
   private:
     // some of the private data for this class is listed above
-    
+
     int* stack; 	 		// Bottom of the stack 
 					// NULL if this is the main thread
 					// (If NULL, don't deallocate stack)
@@ -132,7 +132,7 @@ class NachOSThread {
     int* childPid;
     ChildStatus* childStatus;
     int* childExitCode;
-    
+
 #ifdef USER_PROGRAM
 // A thread running a user program actually has *two* sets of CPU registers -- 
 // one for its state while executing user code, one for its state 

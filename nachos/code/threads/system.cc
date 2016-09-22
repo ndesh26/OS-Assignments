@@ -157,7 +157,7 @@ Initialize(int argc, char **argv)
     threadQueue = new List;
     processTable = new NachOSThread* [1000];
     int i = 0;
-    while(i < 1000) 
+    while(i < 1000)
     {
         processTable[i] = NULL;
         i++;

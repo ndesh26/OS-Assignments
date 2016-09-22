@@ -133,7 +133,7 @@ ProcessAddrSpace::ProcessAddrSpace(unsigned int noOfPages,unsigned int startOfPh
 						// at least until we have
 						// virtual memory
 
-    DEBUG('a', "Initializing address space, num pages %d, size %d and totalPage: %d\n", 
+    DEBUG('a', "Initializing address space, num pages %d, size %d and totalPage: %d\n",
 					numPagesInVM, size, totalPage);
 // first, set up the translation 
     NachOSpageTable = new TranslationEntry[numPagesInVM];
