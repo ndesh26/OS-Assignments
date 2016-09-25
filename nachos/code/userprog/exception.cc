@@ -314,6 +314,7 @@ ExceptionHandler(ExceptionType which)
             for (i = 0; i < 1000; i++) {
                 if (processTable[i] != NULL && processTable[i]->getPid() == pid) {
                     DEBUG('f',"Removing process with pid %d from processTable\n", processTable[i]->getPid());
+                    processTable[i]->setChildPpid();
                     processTable[i] = NULL;
                     break;
                 }

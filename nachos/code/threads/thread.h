@@ -103,6 +103,7 @@ class NachOSThread {
     void Print() { printf("%s, ", name); }
     int getPid() { return pid; }
     int getPpid() { return ppid; }
+    void setPpid(int Ppid) { ppid = Ppid; }
     int getInstrNum() { return instrNum; }
     void incInstrNum() { instrNum++; }
     void decInstrNum() { instrNum--; }
@@ -112,6 +113,7 @@ class NachOSThread {
     int setChildExitCode(int index, int exitCode) { childExitCode[index] = exitCode; }
     int getChildIndex(int pid);
     void addChild(int child_pid);
+    void setChildPpid();
   private:
     // some of the private data for this class is listed above
 

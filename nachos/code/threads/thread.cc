@@ -314,16 +314,30 @@ void
 NachOSThread::addChild(int child_pid)
 {
     int i;
-    for(i = 0; i < MAX_THREADS; i++) {
-        if(childPid[i] == 0)
+    for (i = 0; i < MAX_THREADS; i++) {
+        if (childPid[i] == 0)
             break;
     }
-    if(i < MAX_THREADS) {
+    if (i < MAX_THREADS) {
         childPid[i] = child_pid;
         childStatus[i] = CHILD_LIVE;
     }
 }
 
+void
+NachOSThread::setChildPpid()
+{
+    int i = 0, j;
+    while (i < MAX_THREADS && childPid[i] != 0) {
+        for (j = 0; j < 1000; j++) {
+            if (processTable[j] != NULL && processTable[j]->getPid() == childPid[i]) {
+                processTable[j]->setPpid(-1);
+                break;
+            }
+        }
+        i++;
+    }
+}
 #ifdef USER_PROGRAM
 #include "machine.h"
 
