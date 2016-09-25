@@ -24,7 +24,9 @@
 					// execution stack, for detecting 
 					// stack overflows
 
-int pidCount = 0;
+int NachOSThread::pidCount = 0;
+int NachOSThread::threadCount = 0;
+
 //----------------------------------------------------------------------
 // NachOSThread::NachOSThread
 // 	Initialize a thread control block, so that we can then call
@@ -165,7 +167,7 @@ NachOSThread::FinishThread ()
     (void) interrupt->SetLevel(IntOff);		
     ASSERT(this == currentThread);
     
-    DEBUG('t', "Finishing thread \"%s\"\n", getName());
+    DEBUG('t', "Finishing thread \"%d\"\n", getPid());
     
     threadToBeDestroyed = currentThread;
     PutThreadToSleep();					// invokes SWITCH

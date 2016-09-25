@@ -19,7 +19,6 @@ Interrupt *interrupt;			// interrupt status
 Statistics *stats;			// performance metrics
 List *threadQueue;                      // global list of threads sleep on a timer event
 Timer *timer;				// the hardware timer device,
-int threadCount;
                                         // for invoking context switches
 
 #ifdef FILESYS_NEEDED
@@ -164,7 +163,6 @@ Initialize(int argc, char **argv)
     }
 
     threadToBeDestroyed = NULL;
-    threadCount = 0;
     // We didn't explicitly allocate the current thread we are running in.
     // But if it ever tries to give up the CPU, we better have a Thread
     // object to save its state. 

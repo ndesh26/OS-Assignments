@@ -30,7 +30,6 @@ extern Interrupt *interrupt;			// interrupt status
 extern Statistics *stats;			// performance metrics
 extern List *threadQueue;                       // global list of threads sleeping on a timer event
 extern Timer *timer;				// the hardware alarm clock
-extern int threadCount;
 
 extern bool initializedConsoleSemaphores;       // Used to initialize the semaphores for console I/O exactly once
 

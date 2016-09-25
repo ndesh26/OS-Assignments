@@ -73,6 +73,7 @@ static void ConvertIntToHex (unsigned v, Console *console)
 void
 StackInitialize(int which)
 {
+    DEBUG('f', "process %d runs for the first time\n", currentThread->getPid());
     if (threadToBeDestroyed != NULL) {
         delete threadToBeDestroyed;
 	threadToBeDestroyed = NULL;
@@ -222,6 +223,7 @@ ExceptionHandler(ExceptionType which)
             currentThread->YieldCPU();
     }
     else if ((which == SyscallException) && (type == SYScall_GetPID)) {
+            DEBUG('f', "y\n");
             machine->WriteRegister(2, currentThread->getPid());
             incrementPC();
     }
@@ -320,13 +322,14 @@ ExceptionHandler(ExceptionType which)
                 }
             }
 
-            if(threadCount == 1)
+            if(currentThread->threadCount == 1)
                 interrupt->Halt();
             currentThread->FinishThread();
 
     }
     else if((which == SyscallException) && (type == SYScall_Fork)) {
-            incrementPC();
+           incrementPC();
+           incrementPC();
             NachOSThread *childThread = new NachOSThread("child thread");
 
             i = 0;
@@ -335,8 +338,7 @@ ExceptionHandler(ExceptionType which)
                 processTable[i] = childThread;
                 DEBUG('f', "Process with pid %d added to processTable\n",childThread->getPid());
             }
-            childThread->space = new ProcessAddrSpace(machine->pageTableSize,
-                                                      machine->NachOSpageTable[0].physicalPage);
+            childThread->space = new ProcessAddrSpace(machine->pageTableSize, machine->NachOSpageTable[0].physicalPage);
 
             machine->WriteRegister(2, 0);                       // So that the saved user state for the child
             childThread->SaveUserState();                       // has 0 as return value and incresed PCs
