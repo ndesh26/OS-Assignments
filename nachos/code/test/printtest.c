@@ -15,19 +15,9 @@
 int
 main()
 {
-    int i = system_call_Fork();
-    system_call_PrintInt(i);
-    if(i==0)
-    {
-        system_call_PrintString("ChildPid: ");
-        system_call_PrintInt(system_call_GetPID());
-        system_call_PrintChar('\n');
-   
-    }
-    else {
-        system_call_PrintString("ParentPid: ");
-        system_call_PrintInt(system_call_GetPID());
-        system_call_PrintChar('\n');
-    }
-    system_call_Exit(0);
+    system_call_PrintString("hello world\n");
+    system_call_PrintString("Executed ");
+    system_call_PrintInt(system_call_GetNumInstr());
+    system_call_PrintString(" instructions.\n");
+    return 0;
 }

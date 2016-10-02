@@ -13,7 +13,7 @@
 # if you are cross-compiling, you need to point to the right executables
 # and change the flags to ld and the build procedure for as
 #GCCDIR = ~/gnu/local/decstation-ultrix/bin/
-GCCDIR = ../../../mips-i386-xgcc/bin/
+GCCDIR = ~/cs330assignment2/mips-i386-xgcc/bin/
 LDFLAGS = -T script -N
 #ASFLAGS = -mips
 ASFLAGS =
@@ -37,7 +37,7 @@ CPP = /usr/bin/cpp
 INCDIR =-I../userprog -I../threads
 CFLAGS = -G 0 -c $(INCDIR)
 
-all: halt shell matmult sort printtest vectorsum testregPA forkjoin testexec testyield
+all: halt shell matmult sort printtest vectorsum testregPA forkjoin testexec testyield forkjoin_hard testloop1 testloop2 testloop3 testloop4 testloop5 testloop testlooplong
 
 start.o: start.s ../userprog/syscall.h
 	$(CPP) $(CPPFLAGS) start.s > strt.s
@@ -128,5 +128,69 @@ testyield: testyield.o start.o
 	$(LD) $(LDFLAGS) start.o testyield.o -o testyield.coff
 	../bin/coff2noff testyield.coff testyield
 
+forkjoin_hard.o: forkjoin_hard.c
+	$(CC) $(INCDIR) -S forkjoin_hard.c -o forkjoin_hard.s
+	$(AS) $(CFLAGS) forkjoin_hard.s -o forkjoin_hard.o
+	rm -f forkjoin_hard.s
+forkjoin_hard: forkjoin_hard.o start.o
+	$(LD) $(LDFLAGS) start.o forkjoin_hard.o -o forkjoin_hard.coff
+	../bin/coff2noff forkjoin_hard.coff forkjoin_hard
+
+testloop1.o: testloop1.c
+	$(CC) $(INCDIR) -S testloop1.c -o testloop1.s
+	$(AS) $(CFLAGS) testloop1.s -o testloop1.o
+	rm -f testloop1.s
+testloop1: testloop1.o start.o
+	$(LD) $(LDFLAGS) start.o testloop1.o -o testloop1.coff
+	../bin/coff2noff testloop1.coff testloop1
+
+testloop2.o: testloop2.c
+	$(CC) $(INCDIR) -S testloop2.c -o testloop2.s
+	$(AS) $(CFLAGS) testloop2.s -o testloop2.o
+	rm -f testloop2.s
+testloop2: testloop2.o start.o
+	$(LD) $(LDFLAGS) start.o testloop2.o -o testloop2.coff
+	../bin/coff2noff testloop2.coff testloop2
+
+testloop3.o: testloop3.c
+	$(CC) $(INCDIR) -S testloop3.c -o testloop3.s
+	$(AS) $(CFLAGS) testloop3.s -o testloop3.o
+	rm -f testloop3.s
+testloop3: testloop3.o start.o
+	$(LD) $(LDFLAGS) start.o testloop3.o -o testloop3.coff
+	../bin/coff2noff testloop3.coff testloop3
+
+testloop4.o: testloop4.c
+	$(CC) $(INCDIR) -S testloop4.c -o testloop4.s
+	$(AS) $(CFLAGS) testloop4.s -o testloop4.o
+	rm -f testloop4.s
+testloop4: testloop4.o start.o
+	$(LD) $(LDFLAGS) start.o testloop4.o -o testloop4.coff
+	../bin/coff2noff testloop4.coff testloop4
+
+testloop5.o: testloop5.c
+	$(CC) $(INCDIR) -S testloop5.c -o testloop5.s
+	$(AS) $(CFLAGS) testloop5.s -o testloop5.o
+	rm -f testloop5.s
+testloop5: testloop5.o start.o
+	$(LD) $(LDFLAGS) start.o testloop5.o -o testloop5.coff
+	../bin/coff2noff testloop5.coff testloop5
+
+testloop.o: testloop.c
+	$(CC) $(INCDIR) -S testloop.c -o testloop.s
+	$(AS) $(CFLAGS) testloop.s -o testloop.o
+	rm -f testloop.s
+testloop: testloop.o start.o
+	$(LD) $(LDFLAGS) start.o testloop.o -o testloop.coff
+	../bin/coff2noff testloop.coff testloop
+
+testlooplong.o: testlooplong.c
+	$(CC) $(INCDIR) -S testlooplong.c -o testlooplong.s
+	$(AS) $(CFLAGS) testlooplong.s -o testlooplong.o
+	rm -f testlooplong.s
+testlooplong: testlooplong.o start.o
+	$(LD) $(LDFLAGS) start.o testlooplong.o -o testlooplong.coff
+	../bin/coff2noff testlooplong.coff testlooplong
+
 clean:
-	rm -f start.o halt.o halt shell.o shell sort.o sort matmult.o matmult halt.coff shell.coff sort.coff matmult.coff printtest.o printtest printtest.coff vectorsum.o vectorsum.coff vectorsum testregPA.o testregPA.coff testregPA forkjoin.o forkjoin.coff forkjoin testexec.o testexec.coff testexec testyield.o testyield.coff testyield
+	rm -f start.o halt.o halt shell.o shell sort.o sort matmult.o matmult halt.coff shell.coff sort.coff matmult.coff printtest.o printtest printtest.coff vectorsum.o vectorsum.coff vectorsum testregPA.o testregPA.coff testregPA forkjoin.o forkjoin.coff forkjoin testexec.o testexec.coff testexec testyield.o testyield.coff testyield forkjoin_hard forkjoin_hard.o forkjoin_hard.coff testloop1 testloop1.o testloop1.coff testloop2 testloop2.o testloop2.coff testloop3 testloop3.o testloop3.coff testloop4 testloop4.o testloop4.coff testloop5 testloop5.o testloop5.coff testlooplong testlooplong.o testlooplong.coff testloop testloop.o testloop.coff

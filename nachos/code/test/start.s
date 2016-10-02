@@ -155,7 +155,7 @@ system_call_PrintString:
 	.end system_call_PrintString
 
 	.globl system_call_GetReg
-	.ent    system_callGetReg
+	.ent    system_call_GetReg
 system_call_GetReg:
 	addiu $2,$0,SYScall_GetReg
 	syscall

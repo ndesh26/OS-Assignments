@@ -27,8 +27,8 @@ main()
 	buffer[--i] = '\0';
 
 	/*if( i > 0 ) {
-		newProc = system_Exec(buffer);
-		system_Join(newProc);
+		newProc = system_call_Exec(buffer);
+		system_call_Join(newProc);
 	}*/
     }
 }
