@@ -353,8 +353,11 @@ NachOSThread::setChildPpid()
 void
 NachOSThread::SaveUserState()
 {
+
+    IntStatus oldLevel = interrupt->SetLevel(IntOff);	        // disable interrupts
     for (int i = 0; i < NumTotalRegs; i++)
 	userRegisters[i] = machine->ReadRegister(i);
+    (void) interrupt->SetLevel(oldLevel);	                // re-enable interrupts
 }
 
 //----------------------------------------------------------------------
