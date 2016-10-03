@@ -27,9 +27,10 @@
 // 	Initialize the list of ready but not running threads to empty.
 //----------------------------------------------------------------------
 
-NachOSscheduler::NachOSscheduler()
+NachOSscheduler::NachOSscheduler(SchedulerType type)
 { 
-    readyThreadList = new List; 
+    readyThreadList = new List;
+    schedulerType = type;
 } 
 
 //----------------------------------------------------------------------
@@ -70,7 +71,13 @@ NachOSscheduler::ThreadIsReadyToRun (NachOSThread *thread)
 NachOSThread *
 NachOSscheduler::FindNextThreadToRun ()
 {
-    return (NachOSThread *)readyThreadList->Remove();
+    switch(schedulerType):
+    case DEFAULT:
+            return (NachOSThread *)readyThreadList->Remove();
+    case SJF:
+    case ROUND_ROBIN:
+    case UNIX:
+            ASSERT(0);
 }
 
 //----------------------------------------------------------------------

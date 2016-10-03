@@ -151,7 +151,7 @@ Initialize(int argc, char **argv)
     DebugInit(debugArgs);			// initialize DEBUG messages
     stats = new Statistics();			// collect statistics
     interrupt = new Interrupt;			// start up interrupt handling
-    scheduler = new NachOSscheduler();		// initialize the ready queue
+    scheduler = new NachOSscheduler(DEFAULT);		// initialize the ready queue
     //if (randomYield)				// start the timer (if needed)
 	timer = new Timer(TimerInterruptHandler, 0, randomYield);
     threadQueue = new List;

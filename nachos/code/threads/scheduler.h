@@ -13,13 +13,15 @@
 #include "list.h"
 #include "thread.h"
 
+enum SchedulerType { DEFAULT, SJF, ROUND_ROBIN, UNIX };
+
 // The following class defines the scheduler/dispatcher abstraction -- 
 // the data structures and operations needed to keep track of which 
 // thread is running, and which threads are ready but not running.
 
 class NachOSscheduler {
   public:
-    NachOSscheduler();			// Initialize list of ready threads 
+    NachOSscheduler(SchedulerType type);	// Initialize list of ready threads
     ~NachOSscheduler();			// De-allocate ready list
 
     void ThreadIsReadyToRun(NachOSThread* thread);	// Thread can be dispatched.
@@ -28,7 +30,9 @@ class NachOSscheduler {
     void Schedule(NachOSThread* nextThread);	// Cause nextThread to start running
     void Print();			// Print contents of ready list
     int IsEmpty();                      // To check if the ready list is empty
+    void setSchedulerType(SchedulerType type) { schedulerType = type; }
   private:
+    SchedulerType schedulerType;
     List *readyThreadList;  		// queue of threads that are ready to run,
 				// but not running
 };
