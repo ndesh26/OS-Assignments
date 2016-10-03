@@ -141,6 +141,7 @@ class NachOSThread {
 // while executing kernel code.
 
     int userRegisters[NumTotalRegs];	// user-level CPU register state
+    bool stateRestored;
 
   public:
     void SaveUserState();		// save user-level register state

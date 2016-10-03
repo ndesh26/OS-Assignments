@@ -58,6 +58,7 @@ NachOSThread::NachOSThread(char* threadName)
         childPid[i] = 0;
     }
 #ifdef USER_PROGRAM
+    stateRestored = true;
     space = NULL;
 #endif
 }
@@ -354,10 +355,11 @@ void
 NachOSThread::SaveUserState()
 {
 
-    IntStatus oldLevel = interrupt->SetLevel(IntOff);	        // disable interrupts
-    for (int i = 0; i < NumTotalRegs; i++)
-	userRegisters[i] = machine->ReadRegister(i);
-    (void) interrupt->SetLevel(oldLevel);	                // re-enable interrupts
+    if (stateRestored) {                //We save the state only when it was restored before
+        for (int i = 0; i < NumTotalRegs; i++)
+	    userRegisters[i] = machine->ReadRegister(i);
+        stateRestored = false;
+    }
 }
 
 //----------------------------------------------------------------------
@@ -374,6 +376,7 @@ NachOSThread::RestoreUserState()
 {
     for (int i = 0; i < NumTotalRegs; i++)
 	machine->WriteRegister(i, userRegisters[i]);
+    stateRestored = true;               //The state is now restores and it could be saved now
 }
 
 #endif
