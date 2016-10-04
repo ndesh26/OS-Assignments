@@ -71,13 +71,14 @@ NachOSscheduler::ThreadIsReadyToRun (NachOSThread *thread)
 NachOSThread *
 NachOSscheduler::FindNextThreadToRun ()
 {
-    switch(schedulerType):
+    switch (schedulerType) {
     case DEFAULT:
             return (NachOSThread *)readyThreadList->Remove();
     case SJF:
     case ROUND_ROBIN:
     case UNIX:
             ASSERT(0);
+    }
 }
 
 //----------------------------------------------------------------------

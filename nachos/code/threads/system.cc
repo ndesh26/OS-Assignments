@@ -43,7 +43,48 @@ bool initializedConsoleSemaphores;
 // External definition, to allow us to take a pointer to this function
 extern void Cleanup();
 
+//----------------------------------------------------------------------
+//GetSchedulerType
+//      Return the scheduler type after reading the batch file
+//----------------------------------------------------------------------
+#ifdef FILESYS_NEEDED
+static SchedulerType
+GetSchedulerType(char *filename) {
+    int type;
+    char *t;
+    OpenFile *batch;
 
+    if (!filename)
+        return DEFAULT;
+
+    t = new char[2];
+    batch = fileSystem->Open(filename);
+    batch->Read(t, 8);
+
+    if (t[1] > 47)
+        type = (t[0] - '0')*10 + t[1];
+    else
+        type = (t[0] - '0');
+    delete [] t;
+
+    switch (type) {
+    case 1:
+        return DEFAULT;
+    case 2:
+        return SJF;
+    case 3:
+    case 4:
+    case 5:
+    case 6:
+        return ROUND_ROBIN;
+    case 7:
+    case 8:
+    case 9:
+    case 10:
+        return UNIX;
+    }
+}
+#endif
 //----------------------------------------------------------------------
 // TimerInterruptHandler
 // 	Interrupt handler for the timer device.  The timer device is
@@ -62,13 +103,15 @@ extern void Cleanup();
 //		whether it needs it or not.
 //----------------------------------------------------------------------
 static void
-TimerInterruptHandler(int dummy)
+TimerInterruptHandler(int schedulerType)
 {
     int key;
     NachOSThread* threadToWake;     //this thread will be waked up
 
-    if (interrupt->getStatus() != IdleMode)
-	interrupt->YieldOnReturn();
+    if (schedulerType != 0 && schedulerType != 1) {
+        if (interrupt->getStatus() != IdleMode)
+	    interrupt->YieldOnReturn();
+    }
 
     if (threadQueue->IsEmpty())
         return;
@@ -97,6 +140,8 @@ Initialize(int argc, char **argv)
     int argCount;
     char* debugArgs = "";
     bool randomYield = FALSE;
+    char *filename = NULL;
+    SchedulerType schedulerType = DEFAULT;
 
     initializedConsoleSemaphores = false;
 
@@ -130,6 +175,8 @@ Initialize(int argc, char **argv)
 #ifdef USER_PROGRAM
 	if (!strcmp(*argv, "-s"))
 	    debugUserProg = TRUE;
+        if (!strcmp(*argv, "-F"))
+            filename = *(argv+1);
 #endif
 #ifdef FILESYS_NEEDED
 	if (!strcmp(*argv, "-f"))
@@ -151,9 +198,6 @@ Initialize(int argc, char **argv)
     DebugInit(debugArgs);			// initialize DEBUG messages
     stats = new Statistics();			// collect statistics
     interrupt = new Interrupt;			// start up interrupt handling
-    scheduler = new NachOSscheduler(DEFAULT);		// initialize the ready queue
-    //if (randomYield)				// start the timer (if needed)
-	timer = new Timer(TimerInterruptHandler, 0, randomYield);
     threadQueue = new List;
     processTable = new NachOSThread* [1000];
     int i = 0;
@@ -184,11 +228,16 @@ Initialize(int argc, char **argv)
 
 #ifdef FILESYS_NEEDED
     fileSystem = new FileSystem(format);
+    schedulerType = GetSchedulerType(filename);
 #endif
 
 #ifdef NETWORK
     postOffice = new PostOffice(netname, rely, 10);
 #endif
+    scheduler = new NachOSscheduler(schedulerType);		// initialize the ready queue
+    //if (randomYield)				// start the timer (if needed)
+    timer = new Timer(TimerInterruptHandler, static_cast<int>(schedulerType), randomYield);
+
 }
 
 //----------------------------------------------------------------------
