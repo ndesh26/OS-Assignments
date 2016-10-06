@@ -62,7 +62,7 @@ GetSchedulerType(char *filename) {
     batch->Read(t, 8);
 
     if (t[1] > 47)
-        type = (t[0] - '0')*10 + t[1];
+        type = (t[0] - '0')*10 + t[1] - '0';
     else
         type = (t[0] - '0');
     delete [] t;
