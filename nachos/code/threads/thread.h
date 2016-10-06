@@ -114,6 +114,7 @@ class NachOSThread {
     int getChildIndex(int pid);
     void addChild(int child_pid);
     void setChildPpid();
+    void setPriority(int Priority){ priority=Priority; }
   private:
     // some of the private data for this class is listed above
 
@@ -129,6 +130,7 @@ class NachOSThread {
 
     int pid, ppid;			// My pid and my parent's pid
     int instrNum ;                      // Number of instructions executed by thread
+    int priority;
 
     bool parent_waiting;
     int* childPid;

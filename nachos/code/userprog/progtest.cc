@@ -23,6 +23,9 @@
 void
 StartUserProcess(char *filename)
 {
+    for(int h=0;h<=strlen(filename);h++){
+        printf("here:%d\n",filename[h]);
+    }
     OpenFile *executable = fileSystem->Open(filename);
     ProcessAddrSpace *space;
 
@@ -42,6 +45,73 @@ StartUserProcess(char *filename)
     ASSERT(FALSE);			// machine->Run never returns;
 					// the address space exits
 					// by doing the syscall "exit"
+}
+
+void
+StartBatchProcess(char *filename)
+{
+    OpenFile *executable_list = fileSystem->Open(filename);
+    char c;
+    char path[1000];
+    int priority = 100,i=0;
+    bool Num=false;
+    char filename_i[28];
+    while(executable_list->Read(&c,1)!=0){
+        //printf("C: %c\n",c);
+        //printf("PATh: %s\n",path);
+        if(c == '\n'){
+            printf("filename_i goes here:%s\n",filename_i);
+            for(int h=0;h<=strlen(filename_i);h++){
+                    printf("here:%d\n",filename_i[h]);
+                }
+
+            NachOSThread *threadToPut = new NachOSThread("Thread to be put in ready queue"); 
+            OpenFile *executable = fileSystem->Open(filename_i);
+            ProcessAddrSpace *space;
+
+            if (executable == NULL) {
+                printf("Unable to open file asasd%s\n", filename_i);
+                return;
+            }
+            space = new ProcessAddrSpace(executable);    
+            threadToPut->space = space;
+            threadToPut->setPriority(priority);
+
+            delete executable;			// close file
+
+            space->InitUserCPURegisters();		// set the initial register values
+            space->RestoreStateOnSwitch();		// load page table register
+
+            //machine->Run();			// jump to the user progam
+            scheduler->ThreadIsReadyToRun(threadToPut);
+            //ASSERT(FALSE);			// machine->Run never returns;
+                                                // the address space exits
+                                                // by doing the syscall "exit"
+            priority = 100;
+            i = 0;
+            Num = false;
+        }
+        if(c == ' '){
+            priority = 0;
+            Num=true;
+            //filename_i=new char[i+1];
+            for(int j=0;j<i;j++){
+                filename_i[j] = path[j];
+            }
+            filename_i[i]='\0';
+            printf("filename_i:%s\n",filename_i);
+        }
+        if(Num){
+            priority = priority*10+c-'0';
+        }
+        else{
+            path[i]=c;
+            i++;
+        }
+    }
+    delete executable_list;
+    machine->Run();
+    ASSERT(false);
 }
 
 // Data structures needed for the console test.  Threads making
