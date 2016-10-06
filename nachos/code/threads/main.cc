@@ -80,6 +80,7 @@ main(int argc, char **argv)
 {
     int argCount;			// the number of arguments 
 					// for a particular command
+    int pid, i;
 
     DEBUG('t', "Entering main");
     (void) Initialize(argc, argv);
@@ -147,6 +148,18 @@ main(int argc, char **argv)
 #endif // NETWORK
     }
 
+    pid = currentThread->getPid();
+
+    for (i = 0; i < 1000; i++) {
+        if (processTable[i] != NULL && processTable[i]->getPid() == pid) {
+            DEBUG('f',"Removing main process from process table\n");
+            processTable[i]->setChildPpid();
+            processTable[i] = NULL;
+            break;
+        }
+    }
+    if(threadCount == 1)
+        interrupt->Halt();
     currentThread->FinishThread();	// NOTE: if the procedure "main" 
 				// returns, then the program "nachos"
 				// will exit (as any other normal program
