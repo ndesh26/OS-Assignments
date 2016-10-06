@@ -14,6 +14,22 @@
 #include "addrspace.h"
 #include "synch.h"
 
+void
+InitializeStack(int which)
+{
+    if (threadToBeDestroyed != NULL) {
+        delete threadToBeDestroyed;
+	threadToBeDestroyed = NULL;
+    }
+#ifdef USER_PROGRAM
+    if (currentThread->space != NULL) {		// if there is an address space
+        currentThread->space->InitUserCPURegisters();     // to restore, do it.
+        currentThread->space->RestoreStateOnSwitch();
+    }
+#endif
+    machine->Run();
+}
+
 //----------------------------------------------------------------------
 // StartUserProcess
 // 	Run a user program.  Open the executable, load it into
@@ -23,9 +39,6 @@
 void
 StartUserProcess(char *filename)
 {
-    for(int h=0;h<=strlen(filename);h++){
-        printf("here:%d\n",filename[h]);
-    }
     OpenFile *executable = fileSystem->Open(filename);
     ProcessAddrSpace *space;
 
@@ -51,67 +64,59 @@ void
 StartBatchProcess(char *filename)
 {
     OpenFile *executable_list = fileSystem->Open(filename);
-    char c;
-    char path[1000];
-    int priority = 100,i=0;
-    bool Num=false;
-    char filename_i[28];
-    while(executable_list->Read(&c,1)!=0){
-        //printf("C: %c\n",c);
-        //printf("PATh: %s\n",path);
-        if(c == '\n'){
-            printf("filename_i goes here:%s\n",filename_i);
-            for(int h=0;h<=strlen(filename_i);h++){
-                    printf("here:%d\n",filename_i[h]);
+    char c, path[1000];
+    int priority = 100, i = 0;
+    bool num = false;
+    OpenFile *executable;
+    NachOSThread *batchThread;
+
+    /* TODO: Handle scheduler type, we have already set it 
+     * Initialize() just need to avoid reading that
+     */
+    while (executable_list->Read(&c,1) != 0) {
+        switch (c) {
+            case '\n': {
+                path[i] = 0;
+                executable = fileSystem->Open(path);
+
+                if (executable == NULL) {
+                    printf("Unable to open file %s\n", path);
+                } else {
+                    batchThread = new NachOSThread("batch thread");
+                    i = 0;
+
+                    while(processTable[i] != NULL && i < 1000) i++;
+                    if (i < 1000) {
+                        processTable[i] = batchThread;
+                        DEBUG('f', "Process with pid %d added to processTable\n",batchThread->getPid());
+                    }
+
+                    batchThread->space = new ProcessAddrSpace(executable);
+                    batchThread->ThreadFork(InitializeStack, 0);
+                    batchThread->setPriority(priority);
+
+                    delete executable;			// close file
+
+                    priority = 100;
+                    i = 0;
+                    num = false;
                 }
-
-            NachOSThread *threadToPut = new NachOSThread("Thread to be put in ready queue"); 
-            OpenFile *executable = fileSystem->Open(filename_i);
-            ProcessAddrSpace *space;
-
-            if (executable == NULL) {
-                printf("Unable to open file asasd%s\n", filename_i);
-                return;
+                break;
             }
-            space = new ProcessAddrSpace(executable);    
-            threadToPut->space = space;
-            threadToPut->setPriority(priority);
-
-            delete executable;			// close file
-
-            space->InitUserCPURegisters();		// set the initial register values
-            space->RestoreStateOnSwitch();		// load page table register
-
-            //machine->Run();			// jump to the user progam
-            scheduler->ThreadIsReadyToRun(threadToPut);
-            //ASSERT(FALSE);			// machine->Run never returns;
-                                                // the address space exits
-                                                // by doing the syscall "exit"
-            priority = 100;
-            i = 0;
-            Num = false;
-        }
-        if(c == ' '){
-            priority = 0;
-            Num=true;
-            //filename_i=new char[i+1];
-            for(int j=0;j<i;j++){
-                filename_i[j] = path[j];
+            case ' ': {
+                priority = 0;
+                num = true;
+                break;
             }
-            filename_i[i]='\0';
-            printf("filename_i:%s\n",filename_i);
-        }
-        if(Num){
-            priority = priority*10+c-'0';
-        }
-        else{
-            path[i]=c;
-            i++;
+            default: {
+                if (num)
+                    priority = (priority * 10) + c - '0';
+                else
+                    path[i++] = c;
+            }
         }
     }
     delete executable_list;
-    machine->Run();
-    ASSERT(false);
 }
 
 // Data structures needed for the console test.  Threads making
