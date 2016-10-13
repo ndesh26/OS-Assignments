@@ -300,8 +300,8 @@ ExceptionHandler(ExceptionType which)
             if (threadCompletionTime < stats->minThreadCompletionTime)
                 stats->minThreadCompletionTime = threadCompletionTime;
 
-            DEBUG('f', "Exit called for process pid: %d  with parent: %d\n",pid, ppid);
-            DEBUG('f', "Stats for process with pid: %d average: %d no.: %d\n",pid, currentThread->getNoCpuBursts(), currentThread->getAverageCpuBurst());
+            DEBUG('t', "Exit called for process pid: %d  with parent: %d\n",pid, ppid);
+            DEBUG('t', "Stats for process with pid: %d average: %d no.: %d\n",pid, currentThread->getNoCpuBursts(), currentThread->getAverageCpuBurst());
             for (i = 0; i < 1000; i++) {
                 if (processTable[i] != NULL && processTable[i]->getPid() == ppid) {
                     parent = processTable[i];
@@ -320,14 +320,14 @@ ExceptionHandler(ExceptionType which)
                     parent->setChildExitCode(index, exitStatus);
                     if (childStatus == PARENT_WAITING) {
                         scheduler->ThreadIsReadyToRun(parent);
-                        DEBUG('f', "Parent with pid: %d waked by child with pid: %d\n",parent->getPid(), pid);
+                        DEBUG('t', "Parent with pid: %d waked by child with pid: %d\n",parent->getPid(), pid);
                     }
                 }
             }
 
             for (i = 0; i < 1000; i++) {
                 if (processTable[i] != NULL && processTable[i]->getPid() == pid) {
-                    DEBUG('f',"Removing process with pid %d from processTable\n", processTable[i]->getPid());
+                    DEBUG('t',"Removing process with pid %d from processTable\n", processTable[i]->getPid());
                     processTable[i]->setChildPpid();
                     processTable[i] = NULL;
                     break;
@@ -347,7 +347,7 @@ ExceptionHandler(ExceptionType which)
             while(processTable[i] != NULL && i < 1000) i++;
             if (i < 1000) {
                 processTable[i] = childThread;
-                DEBUG('f', "Process with pid %d added to processTable\n",childThread->getPid());
+                DEBUG('t', "Process with pid %d added to processTable\n",childThread->getPid());
             }
             childThread->space = new ProcessAddrSpace(machine->pageTableSize,
                                                       machine->NachOSpageTable[0].physicalPage);
