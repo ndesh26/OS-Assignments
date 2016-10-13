@@ -100,7 +100,7 @@ void
 ExceptionHandler(ExceptionType which)
 {
     int type = machine->ReadRegister(2);
-    int memval, vaddr, printval, tempval, exp, i, pid, ppid, exitStatus;
+    int memval, vaddr, printval, tempval, exp, i, pid, ppid, exitStatus, waitingTime, threadCompletionTime;
     unsigned printvalus;        // Used for printing in hex
     char path[1000];            // To store path of the file for exec
     if (!initializedConsoleSemaphores) {
@@ -285,9 +285,23 @@ ExceptionHandler(ExceptionType which)
 	    exitStatus = machine->ReadRegister(4);
             pid = currentThread->getPid();
             ppid = currentThread->getPpid();
+            waitingTime = currentThread->getWaitingTime();
+            threadCompletionTime = stats->totalTicks - currentThread->getCreationTime();
             NachOSThread* parent = NULL;
 
+            stats->averageWaitingTime = (stats->averageWaitingTime*stats->threadsCompleted + waitingTime) / ++stats->threadsCompleted;
+            stats->averageThreadCompletionTime = (stats->averageThreadCompletionTime*(stats->threadsCompleted-1) + threadCompletionTime) / stats->threadsCompleted;
+            if (waitingTime > stats->maxWaitingTime)
+                stats->maxWaitingTime = waitingTime;
+            if (waitingTime < stats->minWaitingTime)
+                stats->minWaitingTime = waitingTime;
+            if (threadCompletionTime > stats->maxThreadCompletionTime)
+                stats->maxThreadCompletionTime = threadCompletionTime;
+            if (threadCompletionTime < stats->minThreadCompletionTime)
+                stats->minThreadCompletionTime = threadCompletionTime;
+
             DEBUG('f', "Exit called for process pid: %d  with parent: %d\n",pid, ppid);
+            DEBUG('f', "Stats for process with pid: %d average: %d no.: %d\n",pid, currentThread->getNoCpuBursts(), currentThread->getAverageCpuBurst());
             for (i = 0; i < 1000; i++) {
                 if (processTable[i] != NULL && processTable[i]->getPid() == ppid) {
                     parent = processTable[i];

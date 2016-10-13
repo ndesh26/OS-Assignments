@@ -49,6 +49,10 @@ NachOSThread::NachOSThread(char* threadName)
     childPid = new int[MAX_THREADS];
     childStatus = new ChildStatus[MAX_THREADS];
     childExitCode = new int[MAX_THREADS];
+    creationTime = stats->totalTicks;
+    noCpuBursts = 0;
+    averageCpuBurst = 0;
+    startCpuBurst = 0;
     if(pid != 1)
     {
         currentThread->addChild(pid);
@@ -201,6 +205,19 @@ NachOSThread::YieldCPU ()
     
     DEBUG('t', "Yielding thread \"%s\"\n", getName());
     
+    if (stats->totalTicks != startCpuBurst) {
+        averageCpuBurst = (averageCpuBurst*noCpuBursts + stats->totalTicks - startCpuBurst) / ++noCpuBursts;
+        stats->averageCpuBurst = (stats->averageCpuBurst*stats->noCpuBursts + stats->totalTicks - startCpuBurst) / ++stats->noCpuBursts;
+
+        if (stats->totalTicks - startCpuBurst > stats->maxCpuBurst)
+            stats->maxCpuBurst = stats->totalTicks - startCpuBurst;
+        if (stats->totalTicks - startCpuBurst < stats->minCpuBurst)
+            stats->minCpuBurst = stats->totalTicks - startCpuBurst;
+
+        stats->cpuBusyTime += stats->totalTicks - startCpuBurst;
+
+    }
+
     nextThread = scheduler->FindNextThreadToRun();
     if (nextThread != NULL) {
 	scheduler->ThreadIsReadyToRun(this);
@@ -237,6 +254,18 @@ NachOSThread::PutThreadToSleep ()
     ASSERT(interrupt->getLevel() == IntOff);
     
     DEBUG('t', "Sleeping thread \"%s\"\n", getName());
+
+    if (stats->totalTicks != startCpuBurst) {
+        averageCpuBurst = (averageCpuBurst*noCpuBursts + stats->totalTicks - startCpuBurst) / ++noCpuBursts;
+        stats->averageCpuBurst = (stats->averageCpuBurst*stats->noCpuBursts + stats->totalTicks - startCpuBurst) / ++stats->noCpuBursts;
+
+        if (stats->totalTicks - startCpuBurst > stats->maxCpuBurst)
+            stats->maxCpuBurst = stats->totalTicks - startCpuBurst;
+        if (stats->totalTicks - startCpuBurst < stats->minCpuBurst)
+            stats->minCpuBurst = stats->totalTicks - startCpuBurst;
+
+        stats->cpuBusyTime += stats->totalTicks - startCpuBurst;
+    }
 
     status = BLOCKED;
     while ((nextThread = scheduler->FindNextThreadToRun()) == NULL)

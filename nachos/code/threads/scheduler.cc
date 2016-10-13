@@ -57,6 +57,7 @@ NachOSscheduler::ThreadIsReadyToRun (NachOSThread *thread)
     DEBUG('t', "Putting thread %s on ready list.\n", thread->getName());
 
     thread->setStatus(READY);
+    thread->setStartWaitingTime(stats->totalTicks);
     readyThreadList->Append((void *)thread);
 }
 
@@ -112,7 +113,9 @@ NachOSscheduler::Schedule (NachOSThread *nextThread)
 
     currentThread = nextThread;		    // switch to the next thread
     currentThread->setStatus(RUNNING);      // nextThread is now running
-    
+    currentThread->setStartCpuBurst(stats->totalTicks);
+    currentThread->addWaitingTime(stats->totalTicks);
+
     DEBUG('t', "Switching from thread \"%d\" to thread \"%d\"\n",
 	  oldThread->getPid(), nextThread->getPid());
     

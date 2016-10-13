@@ -101,12 +101,15 @@ class NachOSThread {
     void setStatus(ThreadStatus st) { status = st; }
     char* getName() { return (name); }
     void Print() { printf("%s, ", name); }
+
     int getPid() { return pid; }
     int getPpid() { return ppid; }
     void setPpid(int Ppid) { ppid = Ppid; }
+
     int getInstrNum() { return instrNum; }
     void incInstrNum() { instrNum++; }
     void decInstrNum() { instrNum--; }
+
     ChildStatus getChildStatus(int index) { return childStatus[index]; }
     void setChildStatus(int index, ChildStatus status) { childStatus[index] = status; }
     int getChildExitCode(int index) { return childExitCode[index]; }
@@ -114,6 +117,14 @@ class NachOSThread {
     int getChildIndex(int pid);
     void addChild(int child_pid);
     void setChildPpid();
+
+    void setStartCpuBurst(int ticks) { startCpuBurst = ticks; }
+    int getNoCpuBursts() { return noCpuBursts; }
+    int getAverageCpuBurst() { return averageCpuBurst; }
+    void addWaitingTime(int ticks) { waitingTime += ticks - startWaitingTime; }
+    void setStartWaitingTime(int ticks) { startWaitingTime = ticks; }
+    int getWaitingTime() { return waitingTime; }
+    int getCreationTime() { return creationTime; }
   private:
     // some of the private data for this class is listed above
 
@@ -135,6 +146,12 @@ class NachOSThread {
     ChildStatus* childStatus;
     int* childExitCode;
 
+    int creationTime;
+    int noCpuBursts;
+    int averageCpuBurst;
+    int startCpuBurst;
+    int waitingTime;
+    int startWaitingTime;
 #ifdef USER_PROGRAM
 // A thread running a user program actually has *two* sets of CPU registers -- 
 // one for its state while executing user code, one for its state 
