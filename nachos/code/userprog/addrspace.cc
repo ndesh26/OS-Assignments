@@ -64,6 +64,9 @@ ProcessAddrSpace::ProcessAddrSpace(OpenFile *executable)
 {
     NoffHeader noffH;
     unsigned int i, size;
+    unsigned vpn, offset;
+    TranslationEntry *entry;
+    unsigned int pageFrame;
 
     executable->ReadAt((char *)&noffH, sizeof(noffH), 0);
     if ((noffH.noffMagic != NOFFMAGIC) && 
@@ -83,8 +86,8 @@ ProcessAddrSpace::ProcessAddrSpace(OpenFile *executable)
 						// at least until we have
 						// virtual memory
 
-    DEBUG('a', "Initializing address space, num pages %d, size %d\n", 
-					numPagesInVM, size);
+    DEBUG('a', "Initializing address space, num pages %d, size %d and totalPage %d\n",
+					numPagesInVM, size, totalPage);
 // first, set up the translation 
     NachOSpageTable = new TranslationEntry[numPagesInVM];
     for (i = 0; i < numPagesInVM; i++) {
@@ -106,14 +109,22 @@ ProcessAddrSpace::ProcessAddrSpace(OpenFile *executable)
     if (noffH.code.size > 0) {
         DEBUG('a', "Initializing code segment, at 0x%x, size %d\n", 
 			noffH.code.virtualAddr, noffH.code.size);
-        executable->ReadAt(&(machine->mainMemory[noffH.code.virtualAddr]),
-			noffH.code.size, noffH.code.inFileAddr);
+        vpn = noffH.code.virtualAddr/PageSize;
+        offset = noffH.code.virtualAddr%PageSize;
+        entry = &NachOSpageTable[vpn];
+        pageFrame = entry->physicalPage;
+        executable->ReadAt(&(machine->mainMemory[pageFrame * PageSize + offset]),
+                        noffH.code.size, noffH.code.inFileAddr);
     }
     if (noffH.initData.size > 0) {
         DEBUG('a', "Initializing data segment, at 0x%x, size %d\n", 
 			noffH.initData.virtualAddr, noffH.initData.size);
-        executable->ReadAt(&(machine->mainMemory[noffH.initData.virtualAddr]),
-			noffH.initData.size, noffH.initData.inFileAddr);
+        vpn = noffH.initData.virtualAddr/PageSize;
+        offset = noffH.initData.virtualAddr%PageSize;
+        entry = &NachOSpageTable[vpn];
+        pageFrame = entry->physicalPage;
+        executable->ReadAt(&(machine->mainMemory[pageFrame * PageSize + offset]),
+                        noffH.initData.size, noffH.initData.inFileAddr);
     }
 
     totalPage += numPagesInVM;
