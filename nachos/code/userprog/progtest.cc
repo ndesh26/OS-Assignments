@@ -70,9 +70,9 @@ StartBatchProcess(char *filename)
     OpenFile *executable;
     NachOSThread *batchThread;
 
-    /* TODO: Handle scheduler type, we have already set it 
-     * Initialize() just need to avoid reading that
-     */
+    /* Ignore the first line as it contains scheduler type */
+    while (executable_list->Read(&c,1) != 0 && c != '\n'); 
+
     while (executable_list->Read(&c,1) != 0) {
         switch (c) {
             case '\n': {
@@ -81,6 +81,7 @@ StartBatchProcess(char *filename)
 
                 if (executable == NULL) {
                     printf("Unable to open file %s\n", path);
+                    i = 0;
                 } else {
                     batchThread = new NachOSThread("batch thread");
                     i = 0;
