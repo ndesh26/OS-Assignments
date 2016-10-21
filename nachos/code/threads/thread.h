@@ -125,6 +125,8 @@ class NachOSThread {
     void setStartWaitingTime(int ticks) { startWaitingTime = ticks; }
     int getWaitingTime() { return waitingTime; }
     int getCreationTime() { return creationTime; }
+
+    void setPriority(int Priority){ priority=Priority; }
   private:
     // some of the private data for this class is listed above
 
@@ -140,6 +142,7 @@ class NachOSThread {
 
     int pid, ppid;			// My pid and my parent's pid
     int instrNum ;                      // Number of instructions executed by thread
+    int priority;
 
     bool parent_waiting;
     int* childPid;

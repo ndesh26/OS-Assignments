@@ -14,6 +14,22 @@
 #include "addrspace.h"
 #include "synch.h"
 
+void
+InitializeStack(int which)
+{
+    if (threadToBeDestroyed != NULL) {
+        delete threadToBeDestroyed;
+	threadToBeDestroyed = NULL;
+    }
+#ifdef USER_PROGRAM
+    if (currentThread->space != NULL) {		// if there is an address space
+        currentThread->space->InitUserCPURegisters();     // to restore, do it.
+        currentThread->space->RestoreStateOnSwitch();
+    }
+#endif
+    machine->Run();
+}
+
 //----------------------------------------------------------------------
 // StartUserProcess
 // 	Run a user program.  Open the executable, load it into
@@ -42,6 +58,65 @@ StartUserProcess(char *filename)
     ASSERT(FALSE);			// machine->Run never returns;
 					// the address space exits
 					// by doing the syscall "exit"
+}
+
+void
+StartBatchProcess(char *filename)
+{
+    OpenFile *executable_list = fileSystem->Open(filename);
+    char c, path[1000];
+    int priority = 100, i = 0;
+    bool num = false;
+    OpenFile *executable;
+    NachOSThread *batchThread;
+
+    /* TODO: Handle scheduler type, we have already set it 
+     * Initialize() just need to avoid reading that
+     */
+    while (executable_list->Read(&c,1) != 0) {
+        switch (c) {
+            case '\n': {
+                path[i] = 0;
+                executable = fileSystem->Open(path);
+
+                if (executable == NULL) {
+                    printf("Unable to open file %s\n", path);
+                } else {
+                    batchThread = new NachOSThread("batch thread");
+                    i = 0;
+
+                    while(processTable[i] != NULL && i < 1000) i++;
+                    if (i < 1000) {
+                        processTable[i] = batchThread;
+                        DEBUG('f', "Process with pid %d added to processTable\n",batchThread->getPid());
+                    }
+
+                    batchThread->space = new ProcessAddrSpace(executable);
+                    batchThread->ThreadFork(InitializeStack, 0);
+                    batchThread->setPriority(priority);
+
+                    delete executable;			// close file
+
+                    priority = 100;
+                    i = 0;
+                    num = false;
+                }
+                break;
+            }
+            case ' ': {
+                priority = 0;
+                num = true;
+                break;
+            }
+            default: {
+                if (num)
+                    priority = (priority * 10) + c - '0';
+                else
+                    path[i++] = c;
+            }
+        }
+    }
+    delete executable_list;
 }
 
 // Data structures needed for the console test.  Threads making

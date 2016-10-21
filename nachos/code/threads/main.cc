@@ -60,8 +60,8 @@ extern void ThreadTest(void), Copy(char *unixFile, char *nachosFile);
 extern void Print(char *file), PerformanceTest(void);
 extern void StartUserProcess(char *file), ConsoleTest(char *in, char *out);
 extern void MailTest(int networkID);
-
-//----------------------------------------------------------------------
+extern void StartBatchProcess(char *file);
+//---------------------------------------------------------------------
 // main
 // 	Bootstrap the operating system kernel.  
 //	
@@ -80,6 +80,7 @@ main(int argc, char **argv)
 {
     int argCount;			// the number of arguments 
 					// for a particular command
+    int pid, i;
 
     DEBUG('t', "Entering main");
     (void) Initialize(argc, argv);
@@ -108,7 +109,11 @@ main(int argc, char **argv)
 	    interrupt->Halt();		// once we start the console, then 
 					// Nachos will loop forever waiting 
 					// for console input
-	}
+        } else if (!strcmp(*argv, "-F")){
+            ASSERT(argc > 1);
+            StartBatchProcess(*(argv + 1));
+            argCount=2;
+        }
 #endif // USER_PROGRAM
 #ifdef FILESYS
 	if (!strcmp(*argv, "-cp")) { 		// copy from UNIX to Nachos
@@ -143,6 +148,18 @@ main(int argc, char **argv)
 #endif // NETWORK
     }
 
+    pid = currentThread->getPid();
+
+    for (i = 0; i < 1000; i++) {
+        if (processTable[i] != NULL && processTable[i]->getPid() == pid) {
+            DEBUG('f',"Removing main process from process table\n");
+            processTable[i]->setChildPpid();
+            processTable[i] = NULL;
+            break;
+        }
+    }
+    if(threadCount == 1)
+        interrupt->Halt();
     currentThread->FinishThread();	// NOTE: if the procedure "main" 
 				// returns, then the program "nachos"
 				// will exit (as any other normal program
