@@ -43,6 +43,7 @@ Statistics::Print()
     printf("CPU bursts: average %d, max %d, min %d\n", averageCpuBurst, maxCpuBurst, minCpuBurst);
     printf("Total non zero bursts: %d\n", noCpuBursts);
     printf("Waiting time: average %d, max %d, min %d\n", averageWaitingTime, maxWaitingTime, minWaitingTime);
+    printf("Total Number of threads: %d\n", threadsCompleted);
     printf("Thread completion time: average %d, max %d, min %d\n", averageThreadCompletionTime, maxThreadCompletionTime, minThreadCompletionTime);
     printf("\nTicks: total %d, idle %d, system %d, user %d\n", totalTicks,
 	idleTicks, systemTicks, userTicks);
