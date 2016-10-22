@@ -289,8 +289,10 @@ ExceptionHandler(ExceptionType which)
             threadCompletionTime = stats->totalTicks - currentThread->getCreationTime();
             NachOSThread* parent = NULL;
 
-            stats->averageWaitingTime = (stats->averageWaitingTime*stats->threadsCompleted + waitingTime) / ++stats->threadsCompleted;
-            stats->averageThreadCompletionTime = (stats->averageThreadCompletionTime*(stats->threadsCompleted-1) + threadCompletionTime) / stats->threadsCompleted;
+            stats->totalWaitingTime += waitingTime;
+            stats->totalThreadCompletionTime += threadCompletionTime;
+            stats->threadsCompleted += 1;
+
             if (waitingTime > stats->maxWaitingTime)
                 stats->maxWaitingTime = waitingTime;
             if (waitingTime < stats->minWaitingTime)

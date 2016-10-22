@@ -21,7 +21,7 @@ Statistics::Statistics()
     totalTicks = idleTicks = systemTicks = userTicks = 0;
     maxWaitingTime = maxCpuBurst = maxThreadCompletionTime = 0;
     noCpuBursts = threadsCompleted = 0;
-    averageCpuBurst = averageWaitingTime = averageThreadCompletionTime = 0;
+    totalCpuBurst = totalWaitingTime = totalThreadCompletionTime = 0;
     minWaitingTime = minCpuBurst = minThreadCompletionTime = 100000;
     numDiskReads = numDiskWrites = 0;
     numConsoleCharsRead = numConsoleCharsWritten = 0;
@@ -40,11 +40,11 @@ Statistics::Print()
     printf("Total CPU busy time: %d\n", cpuBusyTime);
     printf("Total execution time: %d\n", totalTicks);
     printf("CPU utilization: %3f\n", (float)cpuBusyTime/totalTicks);
-    printf("CPU bursts: average %d, max %d, min %d\n", averageCpuBurst, maxCpuBurst, minCpuBurst);
+    printf("CPU bursts: average %d, max %d, min %d\n", totalCpuBurst/noCpuBursts, maxCpuBurst, minCpuBurst);
     printf("Total non zero bursts: %d\n", noCpuBursts);
-    printf("Waiting time: average %d, max %d, min %d\n", averageWaitingTime, maxWaitingTime, minWaitingTime);
+    printf("Waiting time: average %d, max %d, min %d\n", totalWaitingTime/threadsCompleted, maxWaitingTime, minWaitingTime);
     printf("Total Number of threads: %d\n", threadsCompleted);
-    printf("Thread completion time: average %d, max %d, min %d\n", averageThreadCompletionTime, maxThreadCompletionTime, minThreadCompletionTime);
+    printf("Thread completion time: average %d, max %d, min %d\n", totalThreadCompletionTime/threadsCompleted, maxThreadCompletionTime, minThreadCompletionTime);
     printf("\nTicks: total %d, idle %d, system %d, user %d\n", totalTicks,
 	idleTicks, systemTicks, userTicks);
     printf("Disk I/O: reads %d, writes %d\n", numDiskReads, numDiskWrites);

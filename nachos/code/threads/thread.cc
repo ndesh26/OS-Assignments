@@ -208,7 +208,8 @@ NachOSThread::YieldCPU ()
     
     if (stats->totalTicks != startCpuBurst) {
         averageCpuBurst = (averageCpuBurst*noCpuBursts + stats->totalTicks - startCpuBurst) / ++noCpuBursts;
-        stats->averageCpuBurst = (stats->averageCpuBurst*stats->noCpuBursts + stats->totalTicks - startCpuBurst) / ++stats->noCpuBursts;
+        stats->totalCpuBurst += stats->totalTicks - startCpuBurst;
+        stats->noCpuBursts += 1;
 
         if (stats->totalTicks - startCpuBurst > stats->maxCpuBurst)
             stats->maxCpuBurst = stats->totalTicks - startCpuBurst;
@@ -258,7 +259,8 @@ NachOSThread::PutThreadToSleep ()
 
     if (stats->totalTicks != startCpuBurst) {
         averageCpuBurst = (averageCpuBurst*noCpuBursts + stats->totalTicks - startCpuBurst) / ++noCpuBursts;
-        stats->averageCpuBurst = (stats->averageCpuBurst*stats->noCpuBursts + stats->totalTicks - startCpuBurst) / ++stats->noCpuBursts;
+        stats->totalCpuBurst += stats->totalTicks - startCpuBurst;
+        stats->noCpuBursts += 1;
 
         if (stats->totalTicks - startCpuBurst > stats->maxCpuBurst)
             stats->maxCpuBurst = stats->totalTicks - startCpuBurst;

@@ -28,15 +28,15 @@ class Statistics {
 				// (this is also equal to # of
 				// user instructions executed)
     int noCpuBursts;
-    int averageCpuBurst;
+    int totalCpuBurst;
     int maxCpuBurst;
     int minCpuBurst;
     int cpuBusyTime;
-    int averageWaitingTime;
+    int totalWaitingTime;
     int minWaitingTime;
     int maxWaitingTime;
     int threadsCompleted;
-    int averageThreadCompletionTime;
+    int totalThreadCompletionTime;
     int maxThreadCompletionTime;
     int minThreadCompletionTime;
 
