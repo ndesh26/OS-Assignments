@@ -94,7 +94,8 @@ StartBatchProcess(char *filename)
 
                     batchThread->space = new ProcessAddrSpace(executable);
                     batchThread->ThreadFork(InitializeStack, 0);
-                    batchThread->setPriority(priority);
+                    batchThread->setPriority(50 + priority);
+                    batchThread->setBasePriority(50 + priority);
 
                     delete executable;			// close file
 

@@ -99,6 +99,7 @@ class NachOSThread {
     void CheckOverflow();   			// Check if thread has 
 						// overflowed its stack
     void setStatus(ThreadStatus st) { status = st; }
+    ThreadStatus getStatus() { return status; }
     char* getName() { return (name); }
     void Print() { printf("%s, ", name); }
 
@@ -125,8 +126,12 @@ class NachOSThread {
     void setStartWaitingTime(int ticks) { startWaitingTime = ticks; }
     int getWaitingTime() { return waitingTime; }
     int getCreationTime() { return creationTime; }
+    int getCpuUsage() { return cpuUsage; }
+    void setCpuUsage(int cu) { cpuUsage = cu; }
 
-    void setPriority(int Priority){ priority=Priority; }
+    int getPriority() { return priority; }
+    void setPriority(int Priority) { priority = Priority; }
+    void setBasePriority(int BasePriority) { basePriority = BasePriority; }
   private:
     // some of the private data for this class is listed above
 
@@ -142,7 +147,10 @@ class NachOSThread {
 
     int pid, ppid;			// My pid and my parent's pid
     int instrNum ;                      // Number of instructions executed by thread
+
     int priority;
+    int basePriority;
+    int cpuUsage;
 
     bool parent_waiting;
     int* childPid;

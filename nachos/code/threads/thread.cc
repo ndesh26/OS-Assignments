@@ -53,6 +53,7 @@ NachOSThread::NachOSThread(char* threadName)
     noCpuBursts = 0;
     averageCpuBurst = 0;
     startCpuBurst = 0;
+    cpuUsage = 0;
     if(pid != 1)
     {
         currentThread->addChild(pid);
@@ -215,7 +216,7 @@ NachOSThread::YieldCPU ()
             stats->minCpuBurst = stats->totalTicks - startCpuBurst;
 
         stats->cpuBusyTime += stats->totalTicks - startCpuBurst;
-
+        cpuUsage += stats->totalTicks - startCpuBurst;
     }
 
     nextThread = scheduler->FindNextThreadToRun();
@@ -265,6 +266,7 @@ NachOSThread::PutThreadToSleep ()
             stats->minCpuBurst = stats->totalTicks - startCpuBurst;
 
         stats->cpuBusyTime += stats->totalTicks - startCpuBurst;
+        cpuUsage += stats->totalTicks - startCpuBurst;
     }
 
     status = BLOCKED;
