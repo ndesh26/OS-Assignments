@@ -72,7 +72,7 @@ NachOSscheduler::ThreadIsReadyToRun (NachOSThread *thread)
 NachOSThread *
 NachOSscheduler::FindNextThreadToRun ()
 {
-    int min_i = 0, minCpuUsage = 10000000; // Some big value
+    int min_i = 0, minPriority = 100000; // Some big value
     switch (schedulerType) {
     case DEFAULT:
             return (NachOSThread *)readyThreadList->Remove();
@@ -82,9 +82,10 @@ NachOSscheduler::FindNextThreadToRun ()
     case UNIX:
             for (int i = 0; i < MAX_THREADS; i++) {
                 if (processTable[i]) {
-                    processTable[i]->setCpuUsage(processTable[i]->getCpuUsage()/2);
-                    if (processTable[i]->getCpuUsage() < minCpuUsage && processTable[i]->getStatus() == READY) {
-                        minCpuUsage = processTable[i]->getCpuUsage();
+                    processTable[i]->setCpuUsage(processTable[i]->getCpuUsage() / 2);
+                    processTable[i]->setPriority(processTable[i]->getCpuUsage() + processTable[i]->getBasePriority());
+                    if (processTable[i]->getPriority() < minPriority && processTable[i]->getStatus() == READY) {
+                        minPriority = processTable[i]->getPriority();
                         min_i = i;
                     }
                 }

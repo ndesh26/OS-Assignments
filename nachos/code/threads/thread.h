@@ -132,6 +132,7 @@ class NachOSThread {
     int getPriority() { return priority; }
     void setPriority(int Priority) { priority = Priority; }
     void setBasePriority(int BasePriority) { basePriority = BasePriority; }
+    int getBasePriority() { return basePriority; }
   private:
     // some of the private data for this class is listed above
 
