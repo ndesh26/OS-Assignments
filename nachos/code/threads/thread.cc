@@ -269,6 +269,8 @@ NachOSThread::PutThreadToSleep ()
 
         stats->cpuBusyTime += stats->totalTicks - startCpuBurst;
         cpuUsage += stats->totalTicks - startCpuBurst;
+
+        DEBUG('s', "Process %d completed a quantum of size %d\n", currentThread->getPid(), stats->totalTicks - startCpuBurst);
     }
 
     status = BLOCKED;

@@ -69,18 +69,22 @@ GetSchedulerType(char *filename) {
 
     switch (type) {
     case 1:
+        DEBUG('s', "Scheduler Type: Default Non Preemptive\n");
         return DEFAULT;
     case 2:
+        DEBUG('s', "Scheduler Type: Sortest Job First Non Preemptive\n");
         return SJF;
     case 3:
     case 4:
     case 5:
     case 6:
+        DEBUG('s', "Scheduler Type: Round Robin Preemptive\n");
         return ROUND_ROBIN;
     case 7:
     case 8:
     case 9:
     case 10:
+        DEBUG('s', "Scheduler Type: Unix Scheduler Preemptive\n");
         return UNIX;
     }
 }
