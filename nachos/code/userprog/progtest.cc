@@ -70,6 +70,8 @@ StartBatchProcess(char *filename)
     OpenFile *executable;
     NachOSThread *batchThread;
 
+    IntStatus oldLevel = interrupt->SetLevel(IntOff);
+
     /* Ignore the first line as it contains scheduler type */
     while (executable_list->Read(&c,1) != 0 && c != '\n'); 
 
@@ -93,9 +95,9 @@ StartBatchProcess(char *filename)
                     }
 
                     batchThread->space = new ProcessAddrSpace(executable);
-                    batchThread->ThreadFork(InitializeStack, 0);
                     batchThread->setPriority(50 + priority);
                     batchThread->setBasePriority(50 + priority);
+                    batchThread->ThreadFork(InitializeStack, 0);
 
                     delete executable;			// close file
 
@@ -119,6 +121,7 @@ StartBatchProcess(char *filename)
         }
     }
     delete executable_list;
+    (void) interrupt->SetLevel(oldLevel);
 }
 
 // Data structures needed for the console test.  Threads making
