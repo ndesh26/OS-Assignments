@@ -1,0 +1,11 @@
+7
+./nachos/code/test/testloop 100
+./nachos/code/test/testloop 90
+./nachos/code/test/testloop 80
+./nachos/code/test/testloop 70
+./nachos/code/test/testloop 60
+./nachos/code/test/testloop 50
+./nachos/code/test/testloop 40
+./nachos/code/test/testloop 30
+./nachos/code/test/testloop 20
+./nachos/code/test/testloop 10
