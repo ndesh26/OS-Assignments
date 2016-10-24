@@ -90,7 +90,8 @@ NachOSscheduler::FindNextThreadToRun ()
                     }
                 }
             }
-            DEBUG('s', "Selected thread %d with priority %d for scheduling\n", processTable[min_i]->getPid(), processTable[min_i]->getPriority());
+            if (processTable[min_i])
+                DEBUG('s', "Selected thread %d with priority %d for scheduling\n", processTable[min_i]->getPid(), processTable[min_i]->getPriority());
             return processTable[min_i];
     }
 }
