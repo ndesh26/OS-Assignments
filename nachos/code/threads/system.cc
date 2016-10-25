@@ -112,7 +112,8 @@ TimerInterruptHandler(int schedulerType)
     int key;
     NachOSThread* threadToWake;     //this thread will be waked up
 
-    if (schedulerType != 0 && schedulerType != 1) {
+    int quantum = 100;
+    if (schedulerType != 0 && schedulerType != 1 && currentThread->getCpuUsage()>quantum) {
         if (interrupt->getStatus() != IdleMode)
 	    interrupt->YieldOnReturn();
     }
