@@ -133,6 +133,9 @@ class NachOSThread {
     void setPriority(int Priority) { priority = Priority; }
     void setBasePriority(int BasePriority) { basePriority = BasePriority; }
     int getBasePriority() { return basePriority; }
+    double previousCpuBurst;
+    double previousCpuBurstEstimate;
+
   private:
     // some of the private data for this class is listed above
 

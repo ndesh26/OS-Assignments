@@ -31,6 +31,7 @@ NachOSscheduler::NachOSscheduler(SchedulerType type)
 { 
     readyThreadList = new List;
     schedulerType = type;
+    alpha = 0.5;
 } 
 
 //----------------------------------------------------------------------
@@ -54,11 +55,17 @@ NachOSscheduler::~NachOSscheduler()
 void
 NachOSscheduler::ThreadIsReadyToRun (NachOSThread *thread)
 {
-    DEBUG('t', "Putting thread %s on ready list.\n", thread->getName());
-
+    DEBUG('t', "Putting thread %d on ready list.\n", thread->getPid());
+    int nextCpuBurstEstimate=0;
     thread->setStatus(READY);
     thread->setStartWaitingTime(stats->totalTicks);
-    readyThreadList->Append((void *)thread);
+    if (schedulerType == 1 && thread->previousCpuBurst > 0) {
+        nextCpuBurstEstimate = alpha * (thread->previousCpuBurst) + (1 - alpha) * (thread->previousCpuBurstEstimate);
+        thread->previousCpuBurstEstimate = nextCpuBurstEstimate;
+        if (thread)  
+            readyThreadList->SortedInsert((void *)thread, nextCpuBurstEstimate);
+    }
+    else readyThreadList->Append((void *)thread);
 }
 
 //----------------------------------------------------------------------
@@ -77,6 +84,13 @@ NachOSscheduler::FindNextThreadToRun ()
     case DEFAULT:
             return (NachOSThread *)readyThreadList->Remove();
     case SJF:
+            {
+                 int key = 0;
+                 NachOSThread *thread = (NachOSThread *)readyThreadList->SortedRemove(&key);
+                 if (thread)
+                     DEBUG('s', "Selected thread %d with estimate %d for scheduling\n", thread->getPid(),thread->previousCpuBurstEstimate);
+                 return thread;
+            }
     case ROUND_ROBIN:
             ASSERT(0);
     case UNIX:

@@ -31,6 +31,7 @@ class NachOSscheduler {
     void Print();			// Print contents of ready list
     int IsEmpty();                      // To check if the ready list is empty
     void setSchedulerType(SchedulerType type) { schedulerType = type; }
+    double alpha;
   private:
     SchedulerType schedulerType;
     List *readyThreadList;  		// queue of threads that are ready to run,
