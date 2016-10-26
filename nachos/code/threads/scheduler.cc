@@ -78,7 +78,7 @@ NachOSscheduler::FindNextThreadToRun ()
             return (NachOSThread *)readyThreadList->Remove();
     case SJF:
     case ROUND_ROBIN:
-            return (NachOSThread *)readyThreadList->Remove();
+            ASSERT(0);
     case UNIX:
             for (int i = 0; i < MAX_THREADS; i++) {
                 if (processTable[i]) {
