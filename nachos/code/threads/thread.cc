@@ -204,7 +204,7 @@ NachOSThread::YieldCPU ()
     
     ASSERT(this == currentThread);
     
-    DEBUG('t', "Yielding thread \"%s\"\n", getName());
+    DEBUG('t', "Yielding thread %d\n", getPid());
     
     if (stats->totalTicks != startCpuBurst) {
         averageCpuBurst = (averageCpuBurst*noCpuBursts + stats->totalTicks - startCpuBurst) / ++noCpuBursts;
@@ -218,12 +218,18 @@ NachOSThread::YieldCPU ()
 
         stats->cpuBusyTime += stats->totalTicks - startCpuBurst;
         cpuUsage += stats->totalTicks - startCpuBurst;
+
+        DEBUG('s', "Process %d completed a quantum of size %d\n", currentThread->getPid(), stats->totalTicks - startCpuBurst);
+
     }
 
     nextThread = scheduler->FindNextThreadToRun();
     if (nextThread != NULL) {
 	scheduler->ThreadIsReadyToRun(this);
 	scheduler->Schedule(nextThread);
+    } else {
+        currentThread->setStartCpuBurst(stats->totalTicks);
+        currentThread->addWaitingTime(stats->totalTicks);
     }
     (void) interrupt->SetLevel(oldLevel);
 }
