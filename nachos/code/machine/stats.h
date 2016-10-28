@@ -39,6 +39,7 @@ class Statistics {
     int totalThreadCompletionTime;
     int maxThreadCompletionTime;
     int minThreadCompletionTime;
+    long long int squareThreadCompletionTime;
 
     int numDiskReads;		// number of disk read requests
     int numDiskWrites;		// number of disk write requests

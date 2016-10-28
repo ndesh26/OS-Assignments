@@ -287,10 +287,12 @@ ExceptionHandler(ExceptionType which)
             ppid = currentThread->getPpid();
             waitingTime = currentThread->getWaitingTime();
             threadCompletionTime = stats->totalTicks - currentThread->getCreationTime();
+            long long int square =  (long long int )threadCompletionTime * (long long int)threadCompletionTime;
             NachOSThread* parent = NULL;
 
             stats->totalWaitingTime += waitingTime;
             stats->totalThreadCompletionTime += threadCompletionTime;
+            stats->squareThreadCompletionTime = stats->squareThreadCompletionTime + square;
             stats->threadsCompleted += 1;
 
             if (waitingTime > stats->maxWaitingTime)
