@@ -172,8 +172,7 @@ NachOSThread::FinishThread ()
 {
     (void) interrupt->SetLevel(IntOff);		
     ASSERT(this == currentThread);
-    currentThread->previousCpuBurst = stats->totalTicks - currentThread->startCpuBurst;
-
+    
     DEBUG('t', "Finishing thread \"%s\"\n", getName());
     
     threadToBeDestroyed = currentThread;
@@ -209,7 +208,7 @@ NachOSThread::YieldCPU ()
     
     DEBUG('t', "Yielding thread %d\n", getPid());
 
-    previousCpuBurst = stats->totalTicks - startCpuBurst;   
+    previousCpuBurst = stats->totalTicks - startCpuBurst;
     
     if (stats->totalTicks != startCpuBurst) {
         averageCpuBurst = (averageCpuBurst*noCpuBursts + stats->totalTicks - startCpuBurst) / ++noCpuBursts;
@@ -268,7 +267,7 @@ NachOSThread::PutThreadToSleep ()
     
     DEBUG('t', "Sleeping thread \"%s\"\n", getName());
 
-    previousCpuBurst = stats->totalTicks - startCpuBurst;    
+    previousCpuBurst = stats->totalTicks - startCpuBurst;
 
     if (stats->totalTicks != startCpuBurst) {
         averageCpuBurst = (averageCpuBurst*noCpuBursts + stats->totalTicks - startCpuBurst) / ++noCpuBursts;

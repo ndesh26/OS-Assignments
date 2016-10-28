@@ -56,13 +56,13 @@ void
 NachOSscheduler::ThreadIsReadyToRun (NachOSThread *thread)
 {
     DEBUG('t', "Putting thread %d on ready list.\n", thread->getPid());
-    int nextCpuBurstEstimate=0;
+    int nextCpuBurstEstimate = 0;
     thread->setStatus(READY);
     thread->setStartWaitingTime(stats->totalTicks);
     if (schedulerType == 1 && thread->previousCpuBurst > 0) {
         nextCpuBurstEstimate = alpha * (thread->previousCpuBurst) + (1 - alpha) * (thread->previousCpuBurstEstimate);
         thread->previousCpuBurstEstimate = nextCpuBurstEstimate;
-        if (thread)  
+        if (thread)
             readyThreadList->SortedInsert((void *)thread, nextCpuBurstEstimate);
     }
     else readyThreadList->Append((void *)thread);
