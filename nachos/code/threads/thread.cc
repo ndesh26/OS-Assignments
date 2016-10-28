@@ -215,6 +215,7 @@ NachOSThread::YieldCPU ()
         stats->totalCpuBurst += stats->totalTicks - startCpuBurst;
         stats->noCpuBursts += 1;
         noCpuBursts += 1;
+        
 
         if (stats->totalTicks - startCpuBurst > stats->maxCpuBurst)
             stats->maxCpuBurst = stats->totalTicks - startCpuBurst;
@@ -275,6 +276,9 @@ NachOSThread::PutThreadToSleep ()
         stats->totalCpuBurst += stats->totalTicks - startCpuBurst;
         stats->noCpuBursts += 1;
         noCpuBursts += 1;
+
+        // For SJF
+        stats->estimationError += (previousCpuBurst > previousCpuBurstEstimate) ? previousCpuBurst - previousCpuBurstEstimate : previousCpuBurstEstimate - previousCpuBurst;
 
         if (stats->totalTicks - startCpuBurst > stats->maxCpuBurst)
             stats->maxCpuBurst = stats->totalTicks - startCpuBurst;

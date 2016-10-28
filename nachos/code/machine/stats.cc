@@ -23,6 +23,7 @@ Statistics::Statistics()
     noCpuBursts = threadsCompleted = 0;
     totalCpuBurst = totalWaitingTime = totalThreadCompletionTime = 0;
     squareThreadCompletionTime = 0;
+    estimationError = 0.0;
     minWaitingTime = minCpuBurst = minThreadCompletionTime = 100000;
     numDiskReads = numDiskWrites = 0;
     numConsoleCharsRead = numConsoleCharsWritten = 0;
@@ -48,6 +49,8 @@ Statistics::Print()
     printf("Waiting time: average %d, max %d, min %d\n", totalWaitingTime/threadsCompleted, maxWaitingTime, minWaitingTime);
     printf("Total Number of threads: %d\n", threadsCompleted);
     printf("Thread completion time: average %lld, max %d, min %d variance %lld\n", average, maxThreadCompletionTime, minThreadCompletionTime, square - average*average);
+    //if (schedulerType == 1)
+        printf("Error estiamtion: %lf\n", estimationError/totalCpuBurst);
     printf("\nTicks: total %d, idle %d, system %d, user %d\n", totalTicks,
 	idleTicks, systemTicks, userTicks);
     printf("Disk I/O: reads %d, writes %d\n", numDiskReads, numDiskWrites);

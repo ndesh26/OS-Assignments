@@ -40,6 +40,7 @@ class Statistics {
     int maxThreadCompletionTime;
     int minThreadCompletionTime;
     long long int squareThreadCompletionTime;
+    double estimationError;        // total error in next job estimation for SJF
 
     int numDiskReads;		// number of disk read requests
     int numDiskWrites;		// number of disk write requests

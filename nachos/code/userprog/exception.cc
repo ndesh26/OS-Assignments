@@ -305,7 +305,6 @@ ExceptionHandler(ExceptionType which)
                 stats->minThreadCompletionTime = threadCompletionTime;
 
             DEBUG('t', "Exit called for process pid: %d  with parent: %d\n",pid, ppid);
-            DEBUG('t', "Stats for process with pid: %d no: %d average: %d\n",pid, currentThread->getNoCpuBursts(), currentThread->getTotalCpuBurst()/currentThread->getNoCpuBursts());
             for (i = 0; i < 1000; i++) {
                 if (processTable[i] != NULL && processTable[i]->getPid() == ppid) {
                     parent = processTable[i];

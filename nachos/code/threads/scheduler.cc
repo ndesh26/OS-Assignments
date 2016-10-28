@@ -88,7 +88,7 @@ NachOSscheduler::FindNextThreadToRun ()
                  int key = 0;
                  NachOSThread *thread = (NachOSThread *)readyThreadList->SortedRemove(&key);
                  if (thread)
-                     DEBUG('s', "Selected thread %d with estimate %d for scheduling\n", thread->getPid(),thread->previousCpuBurstEstimate);
+                     DEBUG('s', "Selected thread %d with estimate %lf for scheduling\n", thread->getPid(),thread->previousCpuBurstEstimate);
                  return thread;
             }
     case ROUND_ROBIN:
