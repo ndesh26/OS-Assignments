@@ -120,6 +120,7 @@ class NachOSThread {
     void setChildPpid();
 
     void setStartCpuBurst(int ticks) { startCpuBurst = ticks; }
+    int getStartCpuBurst() { return startCpuBurst; }
     int getNoCpuBursts() { return noCpuBursts; }
     int getAverageCpuBurst() { return averageCpuBurst; }
     void addWaitingTime(int ticks) { waitingTime += ticks - startWaitingTime; }
