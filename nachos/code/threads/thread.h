@@ -122,7 +122,7 @@ class NachOSThread {
     void setStartCpuBurst(int ticks) { startCpuBurst = ticks; }
     int getStartCpuBurst() { return startCpuBurst; }
     int getNoCpuBursts() { return noCpuBursts; }
-    int getAverageCpuBurst() { return averageCpuBurst; }
+    int getTotalCpuBurst() { return totalCpuBurst; }
     void addWaitingTime(int ticks) { waitingTime += ticks - startWaitingTime; }
     void setStartWaitingTime(int ticks) { startWaitingTime = ticks; }
     int getWaitingTime() { return waitingTime; }
@@ -164,7 +164,7 @@ class NachOSThread {
 
     int creationTime;
     int noCpuBursts;
-    int averageCpuBurst;
+    int totalCpuBurst;
     int startCpuBurst;
     int waitingTime;
     int startWaitingTime;

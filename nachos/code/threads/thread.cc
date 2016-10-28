@@ -51,7 +51,7 @@ NachOSThread::NachOSThread(char* threadName)
     childExitCode = new int[MAX_THREADS];
     creationTime = stats->totalTicks;
     noCpuBursts = 0;
-    averageCpuBurst = 0;
+    totalCpuBurst = 0;
     startCpuBurst = 0;
     cpuUsage = 0;
     previousCpuBurst=0.0;
@@ -211,9 +211,10 @@ NachOSThread::YieldCPU ()
     previousCpuBurst = stats->totalTicks - startCpuBurst;
     
     if (stats->totalTicks != startCpuBurst) {
-        averageCpuBurst = (averageCpuBurst*noCpuBursts + stats->totalTicks - startCpuBurst) / ++noCpuBursts;
+        totalCpuBurst += stats->totalTicks - startCpuBurst;
         stats->totalCpuBurst += stats->totalTicks - startCpuBurst;
         stats->noCpuBursts += 1;
+        noCpuBursts += 1;
 
         if (stats->totalTicks - startCpuBurst > stats->maxCpuBurst)
             stats->maxCpuBurst = stats->totalTicks - startCpuBurst;
@@ -270,9 +271,10 @@ NachOSThread::PutThreadToSleep ()
     previousCpuBurst = stats->totalTicks - startCpuBurst;
 
     if (stats->totalTicks != startCpuBurst) {
-        averageCpuBurst = (averageCpuBurst*noCpuBursts + stats->totalTicks - startCpuBurst) / ++noCpuBursts;
+        totalCpuBurst += stats->totalTicks - startCpuBurst;
         stats->totalCpuBurst += stats->totalTicks - startCpuBurst;
         stats->noCpuBursts += 1;
+        noCpuBursts += 1;
 
         if (stats->totalTicks - startCpuBurst > stats->maxCpuBurst)
             stats->maxCpuBurst = stats->totalTicks - startCpuBurst;
