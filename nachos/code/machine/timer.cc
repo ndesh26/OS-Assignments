@@ -79,7 +79,7 @@ int
 Timer::TimeOfNextInterrupt() 
 {
     if (randomize)
-	return 1 + (Random() % (TimerTicks * 2));
+	return 1 + (Random() % (stats->TimerTicks * 2));
     else
-	return TimerTicks; 
+	return stats->TimerTicks;
 }

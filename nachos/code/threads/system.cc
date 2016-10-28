@@ -75,15 +75,35 @@ GetSchedulerType(char *filename) {
         DEBUG('s', "Scheduler Type: Sortest Job First Non Preemptive\n");
         return SJF;
     case 3:
+        stats->TimerTicks = 33;
+        DEBUG('s', "Scheduler Type: Round Robin Preemptive\n");
+        return ROUND_ROBIN;
     case 4:
+        stats->TimerTicks = 66;
+        DEBUG('s', "Scheduler Type: Round Robin Preemptive\n");
+        return ROUND_ROBIN;
     case 5:
+        stats->TimerTicks = 100;
+        DEBUG('s', "Scheduler Type: Round Robin Preemptive\n");
+        return ROUND_ROBIN;
     case 6:
+        stats->TimerTicks = 20;
         DEBUG('s', "Scheduler Type: Round Robin Preemptive\n");
         return ROUND_ROBIN;
     case 7:
+        stats->TimerTicks = 33;
+        DEBUG('s', "Scheduler Type: Unix Scheduler Preemptive\n");
+        return UNIX;
     case 8:
+        stats->TimerTicks = 66;
+        DEBUG('s', "Scheduler Type: Unix Scheduler Preemptive\n");
+        return UNIX;
     case 9:
+        stats->TimerTicks = 100;
+        DEBUG('s', "Scheduler Type: Unix Scheduler Preemptive\n");
+        return UNIX;
     case 10:
+        stats->TimerTicks = 20;
         DEBUG('s', "Scheduler Type: Unix Scheduler Preemptive\n");
         return UNIX;
     }
@@ -112,7 +132,7 @@ TimerInterruptHandler(int schedulerType)
     int key;
     NachOSThread* threadToWake;     //this thread will be waked up
 
-    if (schedulerType != 0 && schedulerType != 1 && TimerTicks < stats->totalTicks - currentThread->getStartCpuBurst()) {
+    if (schedulerType != 0 && schedulerType != 1 && stats->TimerTicks <= stats->totalTicks - currentThread->getStartCpuBurst()) {
         if (interrupt->getStatus() != IdleMode)
 	    interrupt->YieldOnReturn();
     }

@@ -49,6 +49,7 @@ class Statistics {
     int numPacketsSent;		// number of packets sent over the network
     int numPacketsRecvd;	// number of packets received over the network
 
+    int TimerTicks = 100;
     Statistics(); 		// initialize everything to zero
 
     void Print();		// print collected statistics
@@ -68,6 +69,5 @@ class Statistics {
 #define SeekTime 	500    	// time disk takes to seek past one track
 #define ConsoleTime 	100	// time to read or write one character
 #define NetworkTime 	100   	// time to send or receive one packet
-#define TimerTicks 	100    	// (average) time between timer interrupts
 
 #endif // STATS_H
