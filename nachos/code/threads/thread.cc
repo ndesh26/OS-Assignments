@@ -215,7 +215,6 @@ NachOSThread::YieldCPU ()
         stats->totalCpuBurst += stats->totalTicks - startCpuBurst;
         stats->noCpuBursts += 1;
         noCpuBursts += 1;
-        
 
         if (stats->totalTicks - startCpuBurst > stats->maxCpuBurst)
             stats->maxCpuBurst = stats->totalTicks - startCpuBurst;
