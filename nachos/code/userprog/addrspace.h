@@ -37,6 +37,7 @@ class ProcessAddrSpace {
     unsigned GetNumPages();
 
     TranslationEntry* GetPageTable();
+    int AddSharedMemory(unsigned size);
 
   private:
     TranslationEntry *NachOSpageTable;	// Assume linear page table translation

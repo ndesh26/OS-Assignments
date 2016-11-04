@@ -93,6 +93,7 @@ ProcessAddrSpace::ProcessAddrSpace(OpenFile *executable)
 	NachOSpageTable[i].valid = TRUE;
 	NachOSpageTable[i].use = FALSE;
 	NachOSpageTable[i].dirty = FALSE;
+        NachOSpageTable[i].shared = FALSE;
 	NachOSpageTable[i].readOnly = FALSE;  // if the code segment was entirely on 
 					// a separate page, we could set its 
 					// pages to be read-only
@@ -149,10 +150,14 @@ ProcessAddrSpace::ProcessAddrSpace(ProcessAddrSpace *parentSpace)
     NachOSpageTable = new TranslationEntry[numPagesInVM];
     for (i = 0; i < numPagesInVM; i++) {
         NachOSpageTable[i].virtualPage = i;
-        NachOSpageTable[i].physicalPage = i+numPagesAllocated;
+        if (parentPageTable[i].shared == TRUE)
+            NachOSpageTable[i].physicalPage = parentPageTable[i].physicalPage;
+        else
+            NachOSpageTable[i].physicalPage = i+numPagesAllocated;
         NachOSpageTable[i].valid = parentPageTable[i].valid;
         NachOSpageTable[i].use = parentPageTable[i].use;
         NachOSpageTable[i].dirty = parentPageTable[i].dirty;
+        NachOSpageTable[i].shared = parentPageTable[i].shared;
         NachOSpageTable[i].readOnly = parentPageTable[i].readOnly;  	// if the code segment was entirely on
                                         			// a separate page, we could set its
                                         			// pages to be read-only
@@ -245,4 +250,52 @@ TranslationEntry*
 ProcessAddrSpace::GetPageTable()
 {
    return NachOSpageTable;
+}
+
+int
+ProcessAddrSpace::AddSharedMemory(unsigned size)
+{
+    int i, startSharedAddr;
+    unsigned numSharedPages;
+    TranslationEntry* pageTable;
+
+    numSharedPages =  divRoundUp(size, PageSize);
+    size = numSharedPages * PageSize;
+    pageTable = NachOSpageTable;
+    NachOSpageTable = new TranslationEntry[numPagesInVM + numSharedPages];
+
+    for (i = 0; i < numPagesInVM; i++) {
+        NachOSpageTable[i].virtualPage = i;
+        NachOSpageTable[i].physicalPage = pageTable[i].physicalPage;
+        NachOSpageTable[i].valid = pageTable[i].valid;
+        NachOSpageTable[i].use = pageTable[i].use;
+        NachOSpageTable[i].dirty = pageTable[i].dirty;
+        NachOSpageTable[i].shared = pageTable[i].shared;
+        NachOSpageTable[i].readOnly = pageTable[i].readOnly;  	// if the code segment was entirely on
+                                                                // a separate page, we could set its
+                                                                // pages to be read-only
+    }
+
+    for (; i < numPagesInVM + numSharedPages; i++) {
+        NachOSpageTable[i].virtualPage = i;
+        NachOSpageTable[i].physicalPage = i + numPagesAllocated - numPagesInVM;
+        NachOSpageTable[i].valid = TRUE;
+        NachOSpageTable[i].use = FALSE;
+        NachOSpageTable[i].dirty = FALSE;
+        NachOSpageTable[i].shared = TRUE;
+        NachOSpageTable[i].readOnly = FALSE;  	// if the code segment was entirely on
+                                                // a separate page, we could set its
+                                                // pages to be read-only
+    }
+
+    DEBUG('a', "Initializing shared address space, num pages %d, size %d\n",
+                                        numSharedPages, size);
+    delete pageTable;
+    bzero(&machine->mainMemory[numPagesAllocated*PageSize], size);
+    numPagesAllocated += numSharedPages;
+    startSharedAddr = numPagesInVM * PageSize;
+    numPagesInVM += numSharedPages;
+    machine->NachOSpageTable = NachOSpageTable;
+    machine->NachOSpageTableSize = numPagesInVM;
+    return startSharedAddr;
 }
