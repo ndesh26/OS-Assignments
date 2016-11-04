@@ -240,8 +240,58 @@ Interrupt::Idle()
 void
 Interrupt::Halt()
 {
+    int max_completion=0, min_completion=stats->totalTicks, total_completion=0;
+    float avg_completion, var_completion=0;
+    unsigned i;
+
     printf("Machine halting!\n\n");
     stats->Print();
+
+    if (schedulingAlgo == NON_PREEMPTIVE_SJF) {
+       printf("Error in burst estimate over average burst length: %.2f\n", ((float)stats->burstEstimateError)/stats->cpu_time);
+    }
+
+    if (excludeMainThread) {
+       for (i=1; i<thread_index; i++) {
+          if (exitThreadArray[i]) {
+             ASSERT(completionTimeArray[i] != -1);
+             total_completion += completionTimeArray[i];
+             if (completionTimeArray[i] > max_completion) max_completion = completionTimeArray[i];
+             if (completionTimeArray[i] < min_completion) min_completion = completionTimeArray[i];
+          }
+       }
+
+       avg_completion = (float)total_completion/(thread_index-1);
+    
+       for (i=1; i<thread_index; i++) {
+          var_completion += ((completionTimeArray[i] - avg_completion)*(completionTimeArray[i] - avg_completion));
+       }
+
+       var_completion = var_completion/(thread_index-1);
+
+       printf("Completion time statistics for all but main thread: Max: %d, Min: %d, Avg: %.2f, Variance: %.2f\n", max_completion, min_completion, avg_completion, var_completion);
+    }
+    else {
+       for (i=0; i<thread_index; i++) {
+          if (exitThreadArray[i]) {
+             ASSERT(completionTimeArray[i] != -1);
+             total_completion += completionTimeArray[i];
+             if (completionTimeArray[i] > max_completion) max_completion = completionTimeArray[i];
+             if (completionTimeArray[i] < min_completion) min_completion = completionTimeArray[i];
+          }
+       }
+
+       avg_completion = (float)total_completion/thread_index;
+
+       for (i=1; i<thread_index; i++) {
+          var_completion += ((completionTimeArray[i] - avg_completion)*(completionTimeArray[i] - avg_completion));
+       }
+
+       var_completion = var_completion/thread_index;
+
+       printf("Completion time statistics for all threads: Max: %d, Min: %d, Avg: %.2f, Variance: %.2f\n", max_completion, min_completion, avg_completion, var_completion);
+    }
+
     Cleanup();     // Never returns.
 }
 

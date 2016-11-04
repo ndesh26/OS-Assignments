@@ -13,14 +13,28 @@
 
 NachOSThread *currentThread;			// the thread we are running now
 NachOSThread *threadToBeDestroyed;  		// the thread that just finished
-NachOSThread **processTable;
 NachOSscheduler *scheduler;			// the ready list
 Interrupt *interrupt;			// interrupt status
 Statistics *stats;			// performance metrics
-List *threadQueue;                      // global list of threads sleep on a timer event
 Timer *timer;				// the hardware timer device,
-int threadCount;
-                                        // for invoking context switches
+					// for invoking context switches
+
+unsigned numPagesAllocated;              // number of physical frames allocated
+
+NachOSThread *threadArray[MAX_THREAD_COUNT];  // Array of thread pointers
+unsigned thread_index;			// Index into this array (also used to assign unique pid)
+bool initializedConsoleSemaphores;
+bool exitThreadArray[MAX_THREAD_COUNT];  //Marks exited threads
+
+TimeSortedWaitQueue *sleepQueueHead;	// Needed to implement system_call_Sleep
+
+int schedulingAlgo;			// Scheduling algorithm to simulate
+char **batchProcesses;			// Names of batch processes
+int *priority;				// Process priority
+
+int cpu_burst_start_time;        // Records the start of current CPU burst
+int completionTimeArray[MAX_THREAD_COUNT];        // Records the completion time of all simulated threads
+bool excludeMainThread;		// Used by completion time statistics calculation
 
 #ifdef FILESYS_NEEDED
 FileSystem  *fileSystem;
@@ -38,77 +52,11 @@ Machine *machine;	// user program memory and registers
 PostOffice *postOffice;
 #endif
 
-bool initializedConsoleSemaphores;
 
 // External definition, to allow us to take a pointer to this function
 extern void Cleanup();
 
-//----------------------------------------------------------------------
-//GetSchedulerType
-//      Return the scheduler type after reading the batch file
-//----------------------------------------------------------------------
-#ifdef FILESYS_NEEDED
-static SchedulerType
-GetSchedulerType(char *filename) {
-    int type;
-    char *t;
-    OpenFile *batch;
 
-    if (!filename)
-        return DEFAULT;
-
-    t = new char[2];
-    batch = fileSystem->Open(filename);
-    batch->Read(t, 8);
-
-    if (t[1] > 47)
-        type = (t[0] - '0')*10 + t[1] - '0';
-    else
-        type = (t[0] - '0');
-    delete [] t;
-
-    switch (type) {
-    case 1:
-        DEBUG('s', "Scheduler Type: Default Non Preemptive\n");
-        return DEFAULT;
-    case 2:
-        DEBUG('s', "Scheduler Type: Sortest Job First Non Preemptive\n");
-        return SJF;
-    case 3:
-        stats->TimerTicks = 33;
-        DEBUG('s', "Scheduler Type: Round Robin Preemptive\n");
-        return ROUND_ROBIN;
-    case 4:
-        stats->TimerTicks = 66;
-        DEBUG('s', "Scheduler Type: Round Robin Preemptive\n");
-        return ROUND_ROBIN;
-    case 5:
-        stats->TimerTicks = 100;
-        DEBUG('s', "Scheduler Type: Round Robin Preemptive\n");
-        return ROUND_ROBIN;
-    case 6:
-        stats->TimerTicks = 20;
-        DEBUG('s', "Scheduler Type: Round Robin Preemptive\n");
-        return ROUND_ROBIN;
-    case 7:
-        stats->TimerTicks = 33;
-        DEBUG('s', "Scheduler Type: Unix Scheduler Preemptive\n");
-        return UNIX;
-    case 8:
-        stats->TimerTicks = 66;
-        DEBUG('s', "Scheduler Type: Unix Scheduler Preemptive\n");
-        return UNIX;
-    case 9:
-        stats->TimerTicks = 100;
-        DEBUG('s', "Scheduler Type: Unix Scheduler Preemptive\n");
-        return UNIX;
-    case 10:
-        stats->TimerTicks = 20;
-        DEBUG('s', "Scheduler Type: Unix Scheduler Preemptive\n");
-        return UNIX;
-    }
-}
-#endif
 //----------------------------------------------------------------------
 // TimerInterruptHandler
 // 	Interrupt handler for the timer device.  The timer device is
@@ -127,24 +75,24 @@ GetSchedulerType(char *filename) {
 //		whether it needs it or not.
 //----------------------------------------------------------------------
 static void
-TimerInterruptHandler(int schedulerType)
+TimerInterruptHandler(int dummy)
 {
-    int key;
-    NachOSThread* threadToWake;     //this thread will be waked up
-
-    if (schedulerType != 0 && schedulerType != 1 && stats->TimerTicks <= stats->totalTicks - currentThread->getStartCpuBurst()) {
-        if (interrupt->getStatus() != IdleMode)
-	    interrupt->YieldOnReturn();
-    }
-
-    if (threadQueue->IsEmpty())
-        return;
-
-    while (!(threadQueue->IsEmpty()) && (threadQueue->KeyFirst() <= stats->totalTicks)) {
-        threadToWake = (NachOSThread *)threadQueue->SortedRemove(&key);
-        IntStatus oldLevel = interrupt->SetLevel(IntOff);
-        scheduler->ThreadIsReadyToRun(threadToWake);	// ThreadIsReadyToRun assumes that interrupts
-        (void) interrupt->SetLevel(oldLevel);           // are disabled!
+    TimeSortedWaitQueue *ptr;
+    if (interrupt->getStatus() != IdleMode) {
+        // Check the head of the sleep queue
+        while ((sleepQueueHead != NULL) && (sleepQueueHead->GetWhen() <= (unsigned)stats->totalTicks)) {
+           sleepQueueHead->GetThread()->Schedule();
+           ptr = sleepQueueHead;
+           sleepQueueHead = sleepQueueHead->GetNext();
+           delete ptr;
+        }
+        //printf("[%d] Timer interrupt.\n", stats->totalTicks);
+        if ((schedulingAlgo == ROUND_ROBIN) || (schedulingAlgo == UNIX_SCHED)) {
+           if ((stats->totalTicks - cpu_burst_start_time) >= SCHED_QUANTUM) {
+              ASSERT(cpu_burst_start_time == currentThread->GetCPUBurstStartTime());
+	      interrupt->YieldOnReturn();
+           }
+        }
     }
 }
 
@@ -161,13 +109,31 @@ TimerInterruptHandler(int schedulerType)
 void
 Initialize(int argc, char **argv)
 {
-    int argCount;
+    int argCount, i;
     char* debugArgs = "";
     bool randomYield = FALSE;
-    char *filename = NULL;
-    SchedulerType schedulerType = DEFAULT;
 
     initializedConsoleSemaphores = false;
+    numPagesAllocated = 0;
+
+    schedulingAlgo = NON_PREEMPTIVE_BASE;	// Default
+
+    batchProcesses = new char*[MAX_BATCH_SIZE];
+    ASSERT(batchProcesses != NULL);
+    for (i=0; i<MAX_BATCH_SIZE; i++) {
+       batchProcesses[i] = new char[256];
+       ASSERT(batchProcesses[i] != NULL);
+    }
+
+    priority = new int[MAX_BATCH_SIZE];
+    ASSERT(priority != NULL);
+    
+    excludeMainThread = FALSE;
+
+    for (i=0; i<MAX_THREAD_COUNT; i++) { threadArray[i] = NULL; exitThreadArray[i] = false; completionTimeArray[i] = -1; }
+    thread_index = 0;
+
+    sleepQueueHead = NULL;
 
 #ifdef USER_PROGRAM
     bool debugUserProg = FALSE;	// single step user program
@@ -199,8 +165,6 @@ Initialize(int argc, char **argv)
 #ifdef USER_PROGRAM
 	if (!strcmp(*argv, "-s"))
 	    debugUserProg = TRUE;
-        if (!strcmp(*argv, "-F"))
-            filename = *(argv+1);
 #endif
 #ifdef FILESYS_NEEDED
 	if (!strcmp(*argv, "-f"))
@@ -222,23 +186,21 @@ Initialize(int argc, char **argv)
     DebugInit(debugArgs);			// initialize DEBUG messages
     stats = new Statistics();			// collect statistics
     interrupt = new Interrupt;			// start up interrupt handling
-    threadQueue = new List;
-    processTable = new NachOSThread* [1000];
-    int i = 0;
-    while(i < 1000)
-    {
-        processTable[i] = NULL;
-        i++;
-    }
+    scheduler = new NachOSscheduler();		// initialize the ready queue
+    //if (randomYield)				// start the timer (if needed)
+       timer = new Timer(TimerInterruptHandler, 0, randomYield);
 
     threadToBeDestroyed = NULL;
-    threadCount = 0;
+
     // We didn't explicitly allocate the current thread we are running in.
-    // But if it ever tries to give up the CPU, we better have a Thread
-    // object to save its state. 
-    currentThread = new NachOSThread("main");		
+    // But if it ever tries to give up the CPU, we better have a NachOSThread
+    // object to save its state.
+    currentThread = NULL;
+    currentThread = new NachOSThread("main", MIN_NICE_PRIORITY);		
     currentThread->setStatus(RUNNING);
-    processTable[0] = currentThread;
+    stats->start_time = stats->totalTicks;
+    cpu_burst_start_time = stats->totalTicks;
+
     interrupt->Enable();
     CallOnUserAbort(Cleanup);			// if user hits ctl-C
     
@@ -252,16 +214,11 @@ Initialize(int argc, char **argv)
 
 #ifdef FILESYS_NEEDED
     fileSystem = new FileSystem(format);
-    schedulerType = GetSchedulerType(filename);
 #endif
 
 #ifdef NETWORK
     postOffice = new PostOffice(netname, rely, 10);
 #endif
-    scheduler = new NachOSscheduler(schedulerType);		// initialize the ready queue
-    //if (randomYield)				// start the timer (if needed)
-    timer = new Timer(TimerInterruptHandler, static_cast<int>(schedulerType), randomYield);
-
 }
 
 //----------------------------------------------------------------------

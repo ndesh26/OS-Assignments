@@ -3,8 +3,8 @@
 //
 //	ThreadFork -- create a thread to run a procedure concurrently
 //		with the caller (this is done in two steps -- first
-//		allocate the Thread object, then call ThredFork on it)
-//	Finish -- called when the forked procedure finishes, to clean up
+//		allocate the NachOSThread object, then call ThreadFork on it)
+//	FinishThread -- called when the forked procedure finishes, to clean up
 //	YieldCPU -- relinquish control over the CPU to another ready thread
 //	PutThreadToSleep -- relinquish control over the CPU, but thread is now blocked.
 //		In other words, it will not run again, until explicitly 
@@ -23,8 +23,6 @@
 #define STACK_FENCEPOST 0xdeadbeef	// this is put at the top of the
 					// execution stack, for detecting 
 					// stack overflows
-
-int pidCount = 0;
 //----------------------------------------------------------------------
 // NachOSThread::NachOSThread
 // 	Initialize a thread control block, so that we can then call
@@ -33,41 +31,53 @@ int pidCount = 0;
 //	"threadName" is an arbitrary string, useful for debugging.
 //----------------------------------------------------------------------
 
-NachOSThread::NachOSThread(char* threadName)
+NachOSThread::NachOSThread(char* threadName, int nice)
 {
-    name = threadName;
+    int i;
+
+    name = new char[1024];
+    sprintf(name,"%s",threadName);
     stackTop = NULL;
     stack = NULL;
     status = JUST_CREATED;
-    pid = ++pidCount;
-    threadCount = threadCount + 1;
-    if (pid != 1)
-        ppid = currentThread->getPid();
-    else
-        ppid = 0;
-    instrNum = 0;
-    childPid = new int[MAX_THREADS];
-    childStatus = new ChildStatus[MAX_THREADS];
-    childExitCode = new int[MAX_THREADS];
-    creationTime = stats->totalTicks;
-    noCpuBursts = 0;
-    totalCpuBurst = 0;
-    startCpuBurst = 0;
-    cpuUsage = 0;
-    previousCpuBurst=0.0;
-    previousCpuBurstEstimate=0.0;
-    if(pid != 1)
-    {
-        currentThread->addChild(pid);
-        DEBUG('f', "Child Process pid: %d added to parent process: %d\n", pid, ppid);
-    }
-    for(int i = 0; i < MAX_THREADS; i++) {
-        childPid[i] = 0;
-    }
 #ifdef USER_PROGRAM
-    stateRestored = true;
     space = NULL;
+    stateRestored = true;
 #endif
+
+    threadArray[thread_index] = this;
+    pid = thread_index;
+    thread_index++;
+    stats->numTotalThreads = thread_index;
+    ASSERT(thread_index < MAX_THREAD_COUNT);
+    if (currentThread != NULL) {
+       ppid = currentThread->GetPID();
+       currentThread->RegisterNewChild (pid);
+    }
+    else ppid = -1;
+
+    childcount = 0;
+    waitchild_id = -1;
+
+    for (i=0; i<MAX_CHILD_COUNT; i++) exitedChild[i] = false;
+
+    instructionCount = 0;
+
+    if (nice == GET_NICE_FROM_PARENT) {
+       if (ppid != -1) {
+          basePriority = currentThread->GetBasePriority();
+       }
+       else {
+          basePriority = MIN_NICE_PRIORITY + DEFAULT_BASE_PRIORITY;
+       }
+    }
+    else {
+       basePriority = nice + DEFAULT_BASE_PRIORITY;
+    }
+    schedPriority = basePriority;
+    usage = 0;
+
+    if (schedulingAlgo == NON_PREEMPTIVE_SJF) schedPriority = INITIAL_TAU;
 }
 
 //----------------------------------------------------------------------
@@ -85,7 +95,7 @@ NachOSThread::NachOSThread(char* threadName)
 NachOSThread::~NachOSThread()
 {
     DEBUG('t', "Deleting thread \"%s\"\n", name);
-    threadCount = threadCount - 1;
+
     ASSERT(this != currentThread);
     if (stack != NULL)
 	DeallocBoundedArray((char *) stack, StackSize * sizeof(int));
@@ -181,6 +191,101 @@ NachOSThread::FinishThread ()
 }
 
 //----------------------------------------------------------------------
+// NachOSThread::SetChildExitCode
+//      Called by an exiting thread on parent's thread object.
+//----------------------------------------------------------------------
+
+void
+NachOSThread::SetChildExitCode (int childpid, int ecode)
+{
+   unsigned i;
+
+   // Find out which child
+   for (i=0; i<childcount; i++) {
+      if (childpid == childpidArray[i]) break;
+   }
+
+   ASSERT(i < childcount);
+   childexitcode[i] = ecode;
+   exitedChild[i] = true;
+
+   if (waitchild_id == (int)i) {
+      waitchild_id = -1;
+      // I will wake myself up
+      IntStatus oldLevel = interrupt->SetLevel(IntOff);
+      scheduler->ThreadIsReadyToRun(this);
+      (void) interrupt->SetLevel(oldLevel);
+   }
+}
+
+//----------------------------------------------------------------------
+// NachOSThread::Exit
+//      Called by ExceptionHandler when a thread calls Exit.
+//      The argument specifies if all threads have called Exit, in which
+//      case, the simulation should be terminated.
+//----------------------------------------------------------------------
+
+void
+NachOSThread::Exit (bool terminateSim, int exitcode)
+{
+    (void) interrupt->SetLevel(IntOff);
+    ASSERT(this == currentThread);
+
+    DEBUG('t', "Finishing thread \"%s\"\n", getName());
+
+    threadToBeDestroyed = currentThread;
+
+    NachOSThread *nextThread;
+
+    if (status == RUNNING) {
+       stats->cpu_time += (stats->totalTicks - cpu_burst_start_time);
+       if ((stats->totalTicks - cpu_burst_start_time) > 0) {
+          stats->cpu_burst_count++;
+          stats->nonpreemptive_switch++;
+          if ((stats->totalTicks - cpu_burst_start_time) > stats->max_cpu_burst) {
+             stats->max_cpu_burst = (stats->totalTicks - cpu_burst_start_time);
+          }
+          if ((stats->totalTicks - cpu_burst_start_time) < stats->min_cpu_burst) {
+             stats->min_cpu_burst = (stats->totalTicks - cpu_burst_start_time);
+          }
+          if (schedulingAlgo == UNIX_SCHED) {
+             scheduler->UpdateThreadPriority();
+          }
+          else if (schedulingAlgo == NON_PREEMPTIVE_SJF) {
+             stats->burstEstimateError += abs(stats->totalTicks - cpu_burst_start_time - schedPriority);
+             schedPriority = (int)(ALPHA*(stats->totalTicks - cpu_burst_start_time) + (1-ALPHA)*schedPriority);
+          }
+       }
+    }
+    status = BLOCKED;
+    completionTimeArray[currentThread->GetPID()] = stats->totalTicks;
+
+    // Set exit code in parent's structure provided the parent hasn't exited
+    if (ppid != -1) {
+       if (!exitThreadArray[ppid]) {
+          ASSERT(threadArray[ppid] != NULL);
+          threadArray[ppid]->SetChildExitCode (pid, exitcode);
+       }
+    }
+
+    nextThread = scheduler->FindNextThreadToRun();
+    if (nextThread == NULL) {
+       scheduler->SetEmptyReadyQueueStartTime(stats->totalTicks);
+    }
+    while (nextThread == NULL) {
+       if (terminateSim) {
+          DEBUG('i', "Machine idle.  No interrupts to do.\n");
+          printf("\nNo threads ready or runnable, and no pending interrupts.\n");
+          printf("Assuming all programs completed.\n");
+          interrupt->Halt();
+       }
+       else interrupt->Idle();      // no one to run, wait for an interrupt
+       nextThread = scheduler->FindNextThreadToRun();
+    }
+    scheduler->Schedule(nextThread); // returns when we've been signalled
+}
+
+//----------------------------------------------------------------------
 // NachOSThread::YieldCPU
 // 	Relinquish the CPU if any other thread is ready to run.
 //	If so, put the thread on the end of the ready list, so that
@@ -206,35 +311,33 @@ NachOSThread::YieldCPU ()
     
     ASSERT(this == currentThread);
     
-    DEBUG('t', "Yielding thread %d\n", getPid());
-
-    previousCpuBurst = stats->totalTicks - startCpuBurst;
+    DEBUG('t', "Yielding thread \"%s\"\n", getName());
     
-    if (stats->totalTicks != startCpuBurst) {
-        totalCpuBurst += stats->totalTicks - startCpuBurst;
-        stats->totalCpuBurst += stats->totalTicks - startCpuBurst;
-        stats->noCpuBursts += 1;
-        noCpuBursts += 1;
-
-        if (stats->totalTicks - startCpuBurst > stats->maxCpuBurst)
-            stats->maxCpuBurst = stats->totalTicks - startCpuBurst;
-        if (stats->totalTicks - startCpuBurst < stats->minCpuBurst)
-            stats->minCpuBurst = stats->totalTicks - startCpuBurst;
-
-        stats->cpuBusyTime += stats->totalTicks - startCpuBurst;
-        cpuUsage += stats->totalTicks - startCpuBurst;
-
-        DEBUG('s', "Process %d completed a quantum of size %d\n", currentThread->getPid(), stats->totalTicks - startCpuBurst);
-
+    if (schedulingAlgo == UNIX_SCHED) {
+       scheduler->ThreadIsReadyToRun(this);
     }
-
     nextThread = scheduler->FindNextThreadToRun();
     if (nextThread != NULL) {
-	scheduler->ThreadIsReadyToRun(this);
+        if (schedulingAlgo != UNIX_SCHED) {
+	   scheduler->ThreadIsReadyToRun(this);
+        }
 	scheduler->Schedule(nextThread);
-    } else {
-        currentThread->setStartCpuBurst(stats->totalTicks);
-        currentThread->addWaitingTime(stats->totalTicks);
+    }
+    else if (schedulingAlgo != UNIX_SCHED) {
+       stats->cpu_time += (stats->totalTicks - cpu_burst_start_time);
+       if ((stats->totalTicks - cpu_burst_start_time) > 0) {
+          stats->cpu_burst_count++;
+          stats->preemptive_switch++;
+          if ((stats->totalTicks - cpu_burst_start_time) > stats->max_cpu_burst) {
+             stats->max_cpu_burst = (stats->totalTicks - cpu_burst_start_time);
+          }
+          if ((stats->totalTicks - cpu_burst_start_time) < stats->min_cpu_burst) {
+             stats->min_cpu_burst = (stats->totalTicks - cpu_burst_start_time);
+          }
+          ASSERT(schedulingAlgo != NON_PREEMPTIVE_SJF);
+       }
+       cpu_burst_start_time = stats->totalTicks;
+       SetCPUBurstStartTime(cpu_burst_start_time);
     }
     (void) interrupt->SetLevel(oldLevel);
 }
@@ -268,31 +371,35 @@ NachOSThread::PutThreadToSleep ()
     
     DEBUG('t', "Sleeping thread \"%s\"\n", getName());
 
-    previousCpuBurst = stats->totalTicks - startCpuBurst;
-
-    if (stats->totalTicks != startCpuBurst) {
-        totalCpuBurst += stats->totalTicks - startCpuBurst;
-        stats->totalCpuBurst += stats->totalTicks - startCpuBurst;
-        stats->noCpuBursts += 1;
-        noCpuBursts += 1;
-
-        // For SJF
-        stats->estimationError += (previousCpuBurst > previousCpuBurstEstimate) ? previousCpuBurst - previousCpuBurstEstimate : previousCpuBurstEstimate - previousCpuBurst;
-
-        if (stats->totalTicks - startCpuBurst > stats->maxCpuBurst)
-            stats->maxCpuBurst = stats->totalTicks - startCpuBurst;
-        if (stats->totalTicks - startCpuBurst < stats->minCpuBurst)
-            stats->minCpuBurst = stats->totalTicks - startCpuBurst;
-
-        stats->cpuBusyTime += stats->totalTicks - startCpuBurst;
-        cpuUsage += stats->totalTicks - startCpuBurst;
-
-        DEBUG('s', "Process %d completed a quantum of size %d\n", currentThread->getPid(), stats->totalTicks - startCpuBurst);
+    if (status == RUNNING) {
+       stats->cpu_time += (stats->totalTicks - cpu_burst_start_time);
+       if ((stats->totalTicks - cpu_burst_start_time) > 0) {
+          stats->cpu_burst_count++;
+          stats->nonpreemptive_switch++;
+          if ((stats->totalTicks - cpu_burst_start_time) > stats->max_cpu_burst) {
+             stats->max_cpu_burst = (stats->totalTicks - cpu_burst_start_time);
+          }
+          if ((stats->totalTicks - cpu_burst_start_time) < stats->min_cpu_burst) {
+             stats->min_cpu_burst = (stats->totalTicks - cpu_burst_start_time);
+          }
+          if (schedulingAlgo == UNIX_SCHED) {
+             scheduler->UpdateThreadPriority();
+          }
+          else if (schedulingAlgo == NON_PREEMPTIVE_SJF) {
+             stats->burstEstimateError += abs(stats->totalTicks - cpu_burst_start_time - schedPriority);
+             schedPriority = (int)(ALPHA*(stats->totalTicks - cpu_burst_start_time) + (1-ALPHA)*schedPriority);
+          }
+       }
     }
-
     status = BLOCKED;
-    while ((nextThread = scheduler->FindNextThreadToRun()) == NULL)
+    nextThread = scheduler->FindNextThreadToRun();
+    if (nextThread == NULL) {
+       scheduler->SetEmptyReadyQueueStartTime (stats->totalTicks);
+    }
+    while (nextThread == NULL) {
 	interrupt->Idle();	// no one to run, wait for an interrupt
+        nextThread = scheduler->FindNextThreadToRun();
+    }
         
     scheduler->Schedule(nextThread); // returns when we've been signalled
 }
@@ -354,43 +461,7 @@ NachOSThread::AllocateThreadStack (VoidFunctionPtr func, int arg)
     machineState[InitialArgState] = arg;
     machineState[WhenDonePCState] = (int) ThreadFinish;
 }
-int
-NachOSThread::getChildIndex(int pi)
-{
-    for (int i = 0; i < MAX_THREADS; i++) {
-        if(childPid[i] == pi)
-            return i;
-    }
-    return -1;
-}
-void
-NachOSThread::addChild(int child_pid)
-{
-    int i;
-    for (i = 0; i < MAX_THREADS; i++) {
-        if (childPid[i] == 0)
-            break;
-    }
-    if (i < MAX_THREADS) {
-        childPid[i] = child_pid;
-        childStatus[i] = CHILD_LIVE;
-    }
-}
 
-void
-NachOSThread::setChildPpid()
-{
-    int i = 0, j;
-    while (i < MAX_THREADS && childPid[i] != 0) {
-        for (j = 0; j < 1000; j++) {
-            if (processTable[j] != NULL && processTable[j]->getPid() == childPid[i]) {
-                processTable[j]->setPpid(-1);
-                break;
-            }
-        }
-        i++;
-    }
-}
 #ifdef USER_PROGRAM
 #include "machine.h"
 
@@ -406,11 +477,10 @@ NachOSThread::setChildPpid()
 void
 NachOSThread::SaveUserState()
 {
-
-    if (stateRestored) {                //We save the state only when it was restored before
-        for (int i = 0; i < NumTotalRegs; i++)
-	    userRegisters[i] = machine->ReadRegister(i);
-        stateRestored = false;
+    if (stateRestored) {
+       for (int i = 0; i < NumTotalRegs; i++)
+	  userRegisters[i] = machine->ReadRegister(i);
+       stateRestored = false;
     }
 }
 
@@ -428,7 +498,219 @@ NachOSThread::RestoreUserState()
 {
     for (int i = 0; i < NumTotalRegs; i++)
 	machine->WriteRegister(i, userRegisters[i]);
-    stateRestored = true;               //The state is now restores and it could be saved now
+    stateRestored = true;
+}
+#endif
+
+//----------------------------------------------------------------------
+// NachOSThread::CheckIfChild
+//      Checks if the passed pid belongs to a child of mine.
+//      Returns child id if all is fine; otherwise returns -1.
+//----------------------------------------------------------------------
+
+int
+NachOSThread::CheckIfChild (int childpid)
+{
+   unsigned i;
+
+   // Find out which child
+   for (i=0; i<childcount; i++) {
+      if (childpid == childpidArray[i]) break;
+   }
+
+   if (i == childcount) return -1;
+   return i;
 }
 
+//----------------------------------------------------------------------
+// NachOSThread::JoinWithChild
+//      Called by a thread as a result of system_call_Join.
+//      Returns the exit code of the child being joined with.
+//----------------------------------------------------------------------
+
+int
+NachOSThread::JoinWithChild (int whichchild)
+{
+   // Has the child exited?
+   if (!exitedChild[whichchild]) {
+      // Put myself to sleep
+      waitchild_id = whichchild;
+      IntStatus oldLevel = interrupt->SetLevel(IntOff);
+      printf("[pid %d] Before sleep in JoinWithChild.\n", pid);
+      PutThreadToSleep();
+      printf("[pid %d] After sleep in JoinWithChild.\n", pid);
+      (void) interrupt->SetLevel(oldLevel);
+   }
+   return childexitcode[whichchild];
+}
+
+#ifdef USER_PROGRAM
+//----------------------------------------------------------------------
+// NachOSThread::ResetReturnValue
+//      Sets the syscall return value to zero. Used to set the return
+//      value of system_call_Fork in the created child.
+//----------------------------------------------------------------------
+
+void
+NachOSThread::ResetReturnValue ()
+{
+   userRegisters[2] = 0;
+}
 #endif
+
+//----------------------------------------------------------------------
+// NachOSThread::Schedule
+//      Enqueues the thread in the ready queue.
+//----------------------------------------------------------------------
+
+void
+NachOSThread::Schedule()
+{
+    IntStatus oldLevel = interrupt->SetLevel(IntOff);
+    scheduler->ThreadIsReadyToRun(this);        // ThreadIsReadyToRun assumes that interrupts
+                                        // are disabled!
+    (void) interrupt->SetLevel(oldLevel);
+}
+
+//----------------------------------------------------------------------
+// NachOSThread::Startup
+//      Part of the scheduling code needed to cleanly start a forked child.
+//----------------------------------------------------------------------
+
+void
+NachOSThread::Startup()
+{
+   scheduler->Tail();
+}
+
+//----------------------------------------------------------------------
+// NachOSThread::SortedInsertInWaitQueue
+//      Called by system_call_Sleep before putting the caller thread to sleep
+//----------------------------------------------------------------------
+
+void
+NachOSThread::SortedInsertInWaitQueue (unsigned when)
+{
+   TimeSortedWaitQueue *ptr, *prev, *temp;
+
+   if (sleepQueueHead == NULL) {
+      sleepQueueHead = new TimeSortedWaitQueue (this, when);
+      ASSERT(sleepQueueHead != NULL);
+   }
+   else {
+      ptr = sleepQueueHead;
+      prev = NULL;
+      while ((ptr != NULL) && (ptr->GetWhen() <= when)) {
+         prev = ptr;
+         ptr = ptr->GetNext();
+      }
+      if (ptr == NULL) {  // Insert at tail
+         ptr = new TimeSortedWaitQueue (this, when);
+         ASSERT(ptr != NULL);
+         ASSERT(prev->GetNext() == NULL);
+         prev->SetNext(ptr);
+      }
+      else if (prev == NULL) {  // Insert at head
+         ptr = new TimeSortedWaitQueue (this, when);
+         ASSERT(ptr != NULL);
+         ptr->SetNext(sleepQueueHead);
+         sleepQueueHead = ptr;
+      }
+      else {
+         temp = new TimeSortedWaitQueue (this, when);
+         ASSERT(temp != NULL);
+         temp->SetNext(ptr);
+         prev->SetNext(temp);
+      }
+   }
+
+   IntStatus oldLevel = interrupt->SetLevel(IntOff);
+   //printf("[pid %d] Going to sleep at %d.\n", pid, stats->totalTicks);
+   PutThreadToSleep();
+   //printf("[pid %d] Returned from sleep at %d.\n", pid, stats->totalTicks);
+   (void) interrupt->SetLevel(oldLevel);
+}
+
+//----------------------------------------------------------------------
+// NachOSThread::IncInstructionCount
+//      Called by Machine::Run to update instruction count
+//----------------------------------------------------------------------
+
+void
+NachOSThread::IncInstructionCount (void)
+{
+   instructionCount++;
+}
+
+//----------------------------------------------------------------------
+// NachOSThread::GetInstructionCount
+//      Called by SYScall_NumInstr
+//----------------------------------------------------------------------
+
+unsigned
+NachOSThread::GetInstructionCount (void)
+{
+   return instructionCount;
+}
+
+void
+NachOSThread::SetWaitStartTime (int ticks)
+{
+   wait_start_time = ticks;
+}
+
+int
+NachOSThread::GetWaitStartTime (void)
+{
+   return wait_start_time;
+}
+
+void
+NachOSThread::SetCPUBurstStartTime (int ticks)
+{
+   burst_start_time = ticks;
+}
+
+int
+NachOSThread::GetCPUBurstStartTime (void)
+{
+   return burst_start_time;
+}
+
+// Methods used by the UNIX scheduler
+
+void 
+NachOSThread::SetBasePriority (int p)
+{
+   basePriority = p;
+}
+
+int 
+NachOSThread::GetBasePriority (void)
+{
+   return basePriority;
+}
+
+void 
+NachOSThread::SetPriority (int p)
+{
+   schedPriority = p;
+}
+    
+int 
+NachOSThread::GetPriority (void)
+{
+   return schedPriority;
+}
+
+void 
+NachOSThread::SetUsage (int u)
+{
+   usage = u;
+}
+    
+int 
+NachOSThread::GetUsage (void)
+{
+   return usage;
+}

@@ -27,11 +27,10 @@
 // 	Initialize the list of ready but not running threads to empty.
 //----------------------------------------------------------------------
 
-NachOSscheduler::NachOSscheduler(SchedulerType type)
+NachOSscheduler::NachOSscheduler()
 { 
     readyThreadList = new List;
-    schedulerType = type;
-    alpha = 0.5;
+    empty_ready_queue_start_time = -1;
 } 
 
 //----------------------------------------------------------------------
@@ -55,17 +54,35 @@ NachOSscheduler::~NachOSscheduler()
 void
 NachOSscheduler::ThreadIsReadyToRun (NachOSThread *thread)
 {
-    DEBUG('t', "Putting thread %d on ready list.\n", thread->getPid());
-    int nextCpuBurstEstimate = 0;
-    thread->setStatus(READY);
-    thread->setStartWaitingTime(stats->totalTicks);
-    if (schedulerType == 1 && thread->previousCpuBurst > 0) {
-        nextCpuBurstEstimate = alpha * (thread->previousCpuBurst) + (1 - alpha) * (thread->previousCpuBurstEstimate);
-        thread->previousCpuBurstEstimate = nextCpuBurstEstimate;
-        if (thread)
-            readyThreadList->SortedInsert((void *)thread, nextCpuBurstEstimate);
+    DEBUG('t', "Putting thread %s with pid %d on ready list.\n", thread->getName(), thread->GetPID());
+
+    if (thread->getStatus() == RUNNING) {
+       stats->cpu_time += (stats->totalTicks - cpu_burst_start_time);
+       if ((stats->totalTicks - cpu_burst_start_time) > 0) {
+          stats->cpu_burst_count++;
+          stats->preemptive_switch++;
+          if ((stats->totalTicks - cpu_burst_start_time) > stats->max_cpu_burst) {
+             stats->max_cpu_burst = (stats->totalTicks - cpu_burst_start_time);
+          }
+          if ((stats->totalTicks - cpu_burst_start_time) < stats->min_cpu_burst) {
+             stats->min_cpu_burst = (stats->totalTicks - cpu_burst_start_time);
+          }
+          if (schedulingAlgo == UNIX_SCHED) {
+             UpdateThreadPriority();
+          }
+          else if (schedulingAlgo == NON_PREEMPTIVE_SJF) {
+             stats->burstEstimateError += abs(stats->totalTicks - cpu_burst_start_time - thread->GetPriority());
+             thread->SetPriority((int)(ALPHA*(stats->totalTicks - cpu_burst_start_time) + (1-ALPHA)*thread->GetPriority()));
+          }
+       }
     }
-    else readyThreadList->Append((void *)thread);
+    thread->setStatus(READY);
+    thread->SetWaitStartTime(stats->totalTicks);
+    if (readyThreadList->IsEmpty() && (empty_ready_queue_start_time != -1)) {
+       stats->empty_ready_queue_time += (stats->totalTicks - empty_ready_queue_start_time);
+       empty_ready_queue_start_time = -1;
+    }
+    readyThreadList->Append((void *)thread);
 }
 
 //----------------------------------------------------------------------
@@ -73,40 +90,17 @@ NachOSscheduler::ThreadIsReadyToRun (NachOSThread *thread)
 // 	Return the next thread to be scheduled onto the CPU.
 //	If there are no ready threads, return NULL.
 // Side effect:
-//	Thread is removed from the ready list.
+//	NachOSThread is removed from the ready list.
 //----------------------------------------------------------------------
 
 NachOSThread *
 NachOSscheduler::FindNextThreadToRun ()
 {
-    int min_i = 0, minPriority = 100000; // Some big value
-    switch (schedulerType) {
-    case DEFAULT:
-            return (NachOSThread *)readyThreadList->Remove();
-    case SJF:
-            {
-                 int key = 0;
-                 NachOSThread *thread = (NachOSThread *)readyThreadList->SortedRemove(&key);
-                 if (thread)
-                     DEBUG('s', "Selected thread %d with estimate %lf for scheduling\n", thread->getPid(),thread->previousCpuBurstEstimate);
-                 return thread;
-            }
-    case ROUND_ROBIN:
-            return (NachOSThread *)readyThreadList->Remove();
-    case UNIX:
-            for (int i = 0; i < MAX_THREADS; i++) {
-                if (processTable[i]) {
-                    processTable[i]->setCpuUsage(processTable[i]->getCpuUsage() / 2);
-                    processTable[i]->setPriority(processTable[i]->getCpuUsage() + processTable[i]->getBasePriority());
-                    if (processTable[i]->getPriority() < minPriority && processTable[i]->getStatus() == READY) {
-                        minPriority = processTable[i]->getPriority();
-                        min_i = i;
-                    }
-                }
-            }
-            if (processTable[min_i])
-                DEBUG('s', "Selected thread %d with priority %d for scheduling\n", processTable[min_i]->getPid(), processTable[min_i]->getPriority());
-            return processTable[min_i];
+    if ((schedulingAlgo == UNIX_SCHED) || (schedulingAlgo == NON_PREEMPTIVE_SJF)){
+       return (NachOSThread *)readyThreadList->GetMinPriorityThread();
+    }
+    else {
+       return (NachOSThread *)readyThreadList->Remove();
     }
 }
 
@@ -129,6 +123,10 @@ NachOSscheduler::Schedule (NachOSThread *nextThread)
 {
     NachOSThread *oldThread = currentThread;
     
+    cpu_burst_start_time = stats->totalTicks;
+    nextThread->SetCPUBurstStartTime(cpu_burst_start_time);
+    stats->total_wait_time += (stats->totalTicks - nextThread->GetWaitStartTime());
+
 #ifdef USER_PROGRAM			// ignore until running user programs 
     if (currentThread->space != NULL) {	// if this thread is a user program,
         currentThread->SaveUserState(); // save the user's CPU registers
@@ -141,11 +139,9 @@ NachOSscheduler::Schedule (NachOSThread *nextThread)
 
     currentThread = nextThread;		    // switch to the next thread
     currentThread->setStatus(RUNNING);      // nextThread is now running
-    currentThread->setStartCpuBurst(stats->totalTicks);
-    currentThread->addWaitingTime(stats->totalTicks);
-
-    DEBUG('t', "Switching from thread \"%d\" to thread \"%d\"\n",
-	  oldThread->getPid(), nextThread->getPid());
+    
+    DEBUG('t', "Switching from thread \"%s\" with pid %d to thread \"%s\" with pid %d\n",
+	  oldThread->getName(), oldThread->GetPID(), nextThread->getName(), nextThread->GetPID());
     
     // This is a machine-dependent assembly language routine defined 
     // in switch.s.  You may have to think
@@ -154,7 +150,7 @@ NachOSscheduler::Schedule (NachOSThread *nextThread)
 
     _SWITCH(oldThread, nextThread);
     
-    DEBUG('t', "Now in thread \"%s\"\n", currentThread->getName());
+    DEBUG('t', "Now in thread \"%s\" with pid %d\n", currentThread->getName(), currentThread->GetPID());
 
     // If the old thread gave up the processor because it was finishing,
     // we need to delete its carcass.  Note we cannot delete the thread
@@ -174,6 +170,35 @@ NachOSscheduler::Schedule (NachOSThread *nextThread)
 }
 
 //----------------------------------------------------------------------
+// NachOSscheduler::Tail
+//      This is the portion of NachOSscheduler::Schedule after _SWITCH(). This needs
+//      to be executed in the startup function used in fork().
+//----------------------------------------------------------------------
+
+void
+NachOSscheduler::Tail ()
+{
+    // If the old thread gave up the processor because it was finishing,
+    // we need to delete its carcass.  Note we cannot delete the thread
+    // before now (for example, in NachOSThread::FinishThread()), because up to this
+    // point, we were still running on the old thread's stack!
+
+    DEBUG('t', "Now in thread \"%s\" with pid %d\n", currentThread->getName(), currentThread->GetPID());
+
+    if (threadToBeDestroyed != NULL) {
+        delete threadToBeDestroyed;
+        threadToBeDestroyed = NULL;
+    }
+
+#ifdef USER_PROGRAM
+    if (currentThread->space != NULL) {         // if there is an address space
+        currentThread->RestoreUserState();     // to restore, do it.
+        currentThread->space->RestoreStateOnSwitch();
+    }
+#endif
+}
+
+//----------------------------------------------------------------------
 // NachOSscheduler::Print
 // 	Print the scheduler state -- in other words, the contents of
 //	the ready list.  For debugging.
@@ -185,8 +210,42 @@ NachOSscheduler::Print()
     readyThreadList->Mapcar((VoidFunctionPtr) ThreadPrint);
 }
 
-int
-NachOSscheduler::IsEmpty()
+void
+NachOSscheduler::SetEmptyReadyQueueStartTime (int ticks)
 {
-    return readyThreadList->IsEmpty();
+   empty_ready_queue_start_time = ticks;
+}
+
+//-------------------------------------------------------------------------
+// NachOSscheduler::UpdateThreadPriority
+//      Updates the priority of all active threads as in the UNIX scheduler
+//--------------------------------------------------------------------------
+void
+NachOSscheduler::UpdateThreadPriority (void)
+{
+   unsigned i;
+   int this_cpu_burst_duration = stats->totalTicks - cpu_burst_start_time;
+   ASSERT(this_cpu_burst_duration > 0);
+   unsigned currentPID = currentThread->GetPID();
+
+   // First we update the currentThread priority
+
+   int currentThreadUsage = currentThread->GetUsage();
+   currentThreadUsage = (currentThreadUsage + this_cpu_burst_duration) >> 1;
+   int currentThreadPriority = currentThread->GetBasePriority() + (currentThreadUsage >> 1);
+   currentThread->SetUsage(currentThreadUsage);
+   currentThread->SetPriority(currentThreadPriority);
+
+   // Update everybody else
+
+   for (i=0; i<thread_index; i++) {
+      if ((i != currentPID) && !exitThreadArray[i]) {
+         ASSERT(threadArray[i] != NULL);
+         currentThreadUsage = threadArray[i]->GetUsage();
+         currentThreadUsage = currentThreadUsage >> 1;
+         currentThreadPriority = threadArray[i]->GetBasePriority() + (currentThreadUsage >> 1);
+         threadArray[i]->SetUsage(currentThreadUsage);
+         threadArray[i]->SetPriority(currentThreadPriority);
+      }
+   }
 }

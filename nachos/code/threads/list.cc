@@ -17,6 +17,7 @@
 
 #include "copyright.h"
 #include "list.h"
+#include "thread.h"
 
 //----------------------------------------------------------------------
 // ListElement::ListElement
@@ -236,3 +237,45 @@ List::SortedRemove(int *keyPtr)
     return thing;
 }
 
+void*
+List::GetMinPriorityThread (void)
+{
+   ListElement *ptr=first, *prev=NULL, *minptr=ptr, *minprev=prev;
+   void *thing;
+   int minimum;
+
+    if (IsEmpty())
+        return NULL;
+
+    if (first == last) {        // list had one item, now has none
+        thing = first->item;
+        first = NULL;
+        last = NULL;
+    } else {
+        minimum = ((NachOSThread*)(minptr->item))->GetPriority();
+        for (ptr = first->next, prev = first; ptr != NULL; prev = ptr, ptr = ptr->next) {
+           if (((NachOSThread*)(ptr->item))->GetPriority() < minimum) {
+              minptr = ptr;
+              minprev = prev;
+              minimum = ((NachOSThread*)(minptr->item))->GetPriority();
+           }
+        }
+        ASSERT(minptr != NULL);
+        ASSERT(minimum == ((NachOSThread*)(minptr->item))->GetPriority());
+        thing = minptr->item;
+        if (minprev == NULL) { // First element has minimum priority
+           first = first->next;
+        }
+        else if (minptr->next == NULL) { // Last element has minimum priority
+           ASSERT(minprev->next == minptr);
+           minprev->next = NULL;
+           last = minprev;
+        }
+        else {
+           ASSERT(minprev->next == minptr);
+           minprev->next = minptr->next;
+        }
+    }
+    delete minptr;
+    return thing;
+}

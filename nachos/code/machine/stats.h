@@ -27,20 +27,21 @@ class Statistics {
     int userTicks;       	// Time spent executing user code
 				// (this is also equal to # of
 				// user instructions executed)
-    int noCpuBursts;
-    int totalCpuBurst;
-    int maxCpuBurst;
-    int minCpuBurst;
-    int cpuBusyTime;
-    int totalWaitingTime;
-    int minWaitingTime;
-    int maxWaitingTime;
-    int threadsCompleted;
-    int totalThreadCompletionTime;
-    int maxThreadCompletionTime;
-    int minThreadCompletionTime;
-    long long int squareThreadCompletionTime;
-    double estimationError;        // total error in next job estimation for SJF
+
+    int start_time;		// Start tick of the first CPU burst
+    int total_wait_time;	// Total wait time in ready queue
+    int cpu_time;		// Total CPU busy time
+    int max_cpu_burst;		// Maximum CPU burst length
+    int min_cpu_burst;		// Minimum CPU burst length
+    int cpu_burst_count;	// Number of CPU bursts
+    int empty_ready_queue_time;	// Time for which the ready queue is empty
+
+    int preemptive_switch;	// Preemptive context switch count
+    int nonpreemptive_switch;	// Non-preemptive context switch count
+
+    int numTotalThreads;	// Total number of created threads
+
+    int burstEstimateError;	// Keeps track of the squared error in burst estimates
 
     int numDiskReads;		// number of disk read requests
     int numDiskWrites;		// number of disk write requests
@@ -50,7 +51,6 @@ class Statistics {
     int numPacketsSent;		// number of packets sent over the network
     int numPacketsRecvd;	// number of packets received over the network
 
-    int TimerTicks = 100;
     Statistics(); 		// initialize everything to zero
 
     void Print();		// print collected statistics
@@ -70,5 +70,6 @@ class Statistics {
 #define SeekTime 	500    	// time disk takes to seek past one track
 #define ConsoleTime 	100	// time to read or write one character
 #define NetworkTime 	100   	// time to send or receive one packet
+#define TimerTicks 	100   	// (average) time between timer interrupts
 
 #endif // STATS_H

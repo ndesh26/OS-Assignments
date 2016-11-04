@@ -22,7 +22,7 @@
 #ifdef HOST_MIPS
 
 /* Registers that must be saved during a context switch. 
- * These are the offsets from the beginning of the Thread object, 
+ * These are the offsets from the beginning of the NachOSThread object, 
  * in bytes, used in switch.s
  */
 #define SP 0
@@ -44,7 +44,7 @@
  * pass values into ThreadRoot (for instance, containing the procedure
  * for the thread to run).  The first set is the registers as used
  * by ThreadRoot; the second set is the locations for these initial
- * values in the Thread object -- used in NachOSThread::AllocateStack().
+ * values in the NachOSThread object -- used in NachOSThread::AllocateStack().
  */
 
 #define InitialPC	s0

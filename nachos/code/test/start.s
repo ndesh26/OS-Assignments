@@ -218,6 +218,62 @@ system_call_PrintIntHex:
 	j	$31
 	.end system_call_PrintIntHex
 
+	.globl system_call_SemGet
+        .ent    system_call_SemGet
+system_call_SemGet:
+        addiu $2,$0,SYScall_SemGet
+        syscall
+        j       $31
+        .end system_call_SemGet
+
+        .globl system_call_SemOp
+        .ent    system_call_SemOp
+system_call_SemOp:
+        addiu $2,$0,SYScall_SemOp
+        syscall
+        j       $31
+        .end system_call_SemOp
+
+        .globl system_call_SemCtl
+        .ent    system_call_SemCtl
+system_call_SemCtl:
+        addiu $2,$0,SYScall_SemCtl
+        syscall
+        j       $31
+        .end system_call_SemCtl
+
+        .globl system_call_CondGet
+        .ent    system_call_CondGet
+system_call_CondGet:
+        addiu $2,$0,SYScall_CondGet
+        syscall
+        j       $31
+        .end system_call_CondGet
+
+        .globl system_call_CondOp
+        .ent    system_call_CondOp
+system_call_CondOp:
+        addiu $2,$0,SYScall_CondOp
+        syscall
+        j       $31
+        .end system_call_CondOp
+
+        .globl system_call_CondRemove
+        .ent    system_call_CondRemove
+system_call_CondRemove:
+        addiu $2,$0,SYScall_CondRemove
+        syscall
+        j       $31
+        .end system_call_CondRemove
+
+        .globl system_call_ShmAllocate
+        .ent    system_call_ShmAllocate
+system_call_ShmAllocate:
+	addiu $2,$0,SYScall_ShmAllocate
+        syscall
+        j       $31
+        .end system_call_ShmAllocate
+
 /* dummy function to keep gcc happy */
         .globl  __main
         .ent    __main

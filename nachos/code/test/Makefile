@@ -37,7 +37,7 @@ CPP = /usr/bin/cpp
 INCDIR =-I../userprog -I../threads
 CFLAGS = -G 0 -c $(INCDIR)
 
-all: halt shell matmult sort printtest vectorsum testregPA forkjoin testexec testyield forkjoin_hard testloop1 testloop2 testloop3 testloop4 testloop5 testloop testlooplong
+all: halt shell matmult sort printtest vectorsum testregPA forkjoin testexec testyield testloop forkjoin_hard testloop1 testloop2 testloop3 testlooplong testloop4 testloop5 vmtest1 vmtest2 shmtest dekker
 
 start.o: start.s ../userprog/syscall.h
 	$(CPP) $(CPPFLAGS) start.s > strt.s
@@ -128,6 +128,14 @@ testyield: testyield.o start.o
 	$(LD) $(LDFLAGS) start.o testyield.o -o testyield.coff
 	../bin/coff2noff testyield.coff testyield
 
+testloop.o: testloop.c
+	$(CC) $(INCDIR) -S testloop.c -o testloop.s
+	$(AS) $(CFLAGS) testloop.s -o testloop.o
+	rm -f testloop.s
+testloop: testloop.o start.o
+	$(LD) $(LDFLAGS) start.o testloop.o -o testloop.coff
+	../bin/coff2noff testloop.coff testloop
+
 forkjoin_hard.o: forkjoin_hard.c
 	$(CC) $(INCDIR) -S forkjoin_hard.c -o forkjoin_hard.s
 	$(AS) $(CFLAGS) forkjoin_hard.s -o forkjoin_hard.o
@@ -160,6 +168,14 @@ testloop3: testloop3.o start.o
 	$(LD) $(LDFLAGS) start.o testloop3.o -o testloop3.coff
 	../bin/coff2noff testloop3.coff testloop3
 
+testlooplong.o: testlooplong.c
+	$(CC) $(INCDIR) -S testlooplong.c -o testlooplong.s
+	$(AS) $(CFLAGS) testlooplong.s -o testlooplong.o
+	rm -f testlooplong.s
+testlooplong: testlooplong.o start.o
+	$(LD) $(LDFLAGS) start.o testlooplong.o -o testlooplong.coff
+	../bin/coff2noff testlooplong.coff testlooplong
+
 testloop4.o: testloop4.c
 	$(CC) $(INCDIR) -S testloop4.c -o testloop4.s
 	$(AS) $(CFLAGS) testloop4.s -o testloop4.o
@@ -176,21 +192,37 @@ testloop5: testloop5.o start.o
 	$(LD) $(LDFLAGS) start.o testloop5.o -o testloop5.coff
 	../bin/coff2noff testloop5.coff testloop5
 
-testloop.o: testloop.c
-	$(CC) $(INCDIR) -S testloop.c -o testloop.s
-	$(AS) $(CFLAGS) testloop.s -o testloop.o
-	rm -f testloop.s
-testloop: testloop.o start.o
-	$(LD) $(LDFLAGS) start.o testloop.o -o testloop.coff
-	../bin/coff2noff testloop.coff testloop
+vmtest1.o: vmtest1.c
+	$(CC) $(INCDIR) -S vmtest1.c -o vmtest1.s
+	$(AS) $(CFLAGS) vmtest1.s -o vmtest1.o
+	rm -f vmtest1.s
+vmtest1: vmtest1.o start.o
+	$(LD) $(LDFLAGS) start.o vmtest1.o -o vmtest1.coff
+	../bin/coff2noff vmtest1.coff vmtest1
 
-testlooplong.o: testlooplong.c
-	$(CC) $(INCDIR) -S testlooplong.c -o testlooplong.s
-	$(AS) $(CFLAGS) testlooplong.s -o testlooplong.o
-	rm -f testlooplong.s
-testlooplong: testlooplong.o start.o
-	$(LD) $(LDFLAGS) start.o testlooplong.o -o testlooplong.coff
-	../bin/coff2noff testlooplong.coff testlooplong
+vmtest2.o: vmtest2.c
+	$(CC) $(INCDIR) -S vmtest2.c -o vmtest2.s
+	$(AS) $(CFLAGS) vmtest2.s -o vmtest2.o
+	rm -f vmtest2.s
+vmtest2: vmtest2.o start.o
+	$(LD) $(LDFLAGS) start.o vmtest2.o -o vmtest2.coff
+	../bin/coff2noff vmtest2.coff vmtest2
+
+shmtest.o: shmtest.c
+	$(CC) $(INCDIR) -S shmtest.c -o shmtest.s
+	$(AS) $(CFLAGS) shmtest.s -o shmtest.o
+	rm -f shmtest.s
+shmtest: shmtest.o start.o
+	$(LD) $(LDFLAGS) start.o shmtest.o -o shmtest.coff
+	../bin/coff2noff shmtest.coff shmtest
+
+dekker.o: dekker.c
+	$(CC) $(INCDIR) -S dekker.c -o dekker.s
+	$(AS) $(CFLAGS) dekker.s -o dekker.o
+	rm -f dekker.s
+dekker: dekker.o start.o
+	$(LD) $(LDFLAGS) start.o dekker.o -o dekker.coff
+	../bin/coff2noff dekker.coff dekker
 
 clean:
-	rm -f start.o halt.o halt shell.o shell sort.o sort matmult.o matmult halt.coff shell.coff sort.coff matmult.coff printtest.o printtest printtest.coff vectorsum.o vectorsum.coff vectorsum testregPA.o testregPA.coff testregPA forkjoin.o forkjoin.coff forkjoin testexec.o testexec.coff testexec testyield.o testyield.coff testyield forkjoin_hard forkjoin_hard.o forkjoin_hard.coff testloop1 testloop1.o testloop1.coff testloop2 testloop2.o testloop2.coff testloop3 testloop3.o testloop3.coff testloop4 testloop4.o testloop4.coff testloop5 testloop5.o testloop5.coff testlooplong testlooplong.o testlooplong.coff testloop testloop.o testloop.coff
+	rm -f start.o halt.o halt shell.o shell sort.o sort matmult.o matmult halt.coff shell.coff sort.coff matmult.coff printtest.o printtest printtest.coff vectorsum.o vectorsum.coff vectorsum testregPA.o testregPA.coff testregPA forkjoin.o forkjoin.coff forkjoin testexec.o testexec.coff testexec testyield.o testyield.coff testyield testloop.o testloop.coff testloop forkjoin_hard.o forkjoin_hard.coff forkjoin_hard testloop1.o testloop1.coff testloop1 testloop2.o testloop2.coff testloop2 testloop3.o testloop3.coff testloop3 testlooplong.o testlooplong.coff testlooplong testloop4.o testloop4 testloop4.coff testloop5.o testloop5 testloop5.coff queue.o queue queue.coff vmtest1.o vmtest1 vmtest1.coff vmtest2.o vmtest2 vmtest2.coff dekker.o dekker dekker.coff shmtest shmtest.o shmtest.coff

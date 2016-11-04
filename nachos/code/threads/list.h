@@ -57,7 +57,8 @@ class List {
     // Routines to put/get items on/off list in order (sorted by key)
     void SortedInsert(void *item, int sortKey);	// Put item into list
     void *SortedRemove(int *keyPtr); 	  	// Remove first item from list
-    int KeyFirst() { return first->key; }       //return the key for first element
+
+    void *GetMinPriorityThread (void);
 
   private:
     ListElement *first;  	// Head of the list, NULL if list is empty

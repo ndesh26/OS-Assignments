@@ -35,19 +35,21 @@
 #define SYScall_PrintInt	11
 #define SYScall_PrintChar	12
 #define SYScall_PrintString	13
-
 #define SYScall_GetReg		14
 #define SYScall_GetPA		15
 #define SYScall_GetPID		16
 #define SYScall_GetPPID		17
-
 #define SYScall_Sleep		18
-
 #define SYScall_Time		19
-
-#define SYScall_PrintIntHex  	20
-
-#define SYScall_NumInstr	50
+#define SYScall_PrintIntHex	20
+#define SYScall_SemGet		21
+#define SYScall_SemOp		22
+#define SYScall_SemCtl		23
+#define SYScall_CondGet		24
+#define SYScall_CondOp		25
+#define SYScall_CondRemove	26
+#define SYScall_ShmAllocate	27
+#define SYScall_NumInstr        50
 
 #ifndef IN_ASM
 
@@ -74,7 +76,7 @@ void system_call_Exit(int status);
 /* This is same as PID. */
 typedef int SpaceId;	
  
-/* Run the executable, stored in the Nachos file "name"
+/* Run the executable, stored in the Nachos file "name". Doesn't return.
  */
 void system_call_Exec(char *name);
  
@@ -135,7 +137,7 @@ void system_call_Close(OpenFileId id);
 
 /* Fork a thread. Returns child pid to parent and zero to child.
  */
-int system_call_Fork(void);
+int system_call_Fork();
 
 /* Yield the CPU to another runnable thread, whether in this address space 
  * or not. 
@@ -146,11 +148,11 @@ void system_call_Yield();
 
 void system_call_PrintInt (int x);
 
+void system_call_PrintIntHex (int x);
+
 void system_call_PrintChar (char x);
 
 void system_call_PrintString (char *x);
-
-void system_call_PrintIntHex (int x);
 
 int system_call_GetReg (int regno);
 
@@ -160,12 +162,25 @@ int system_call_GetPID (void);
 
 int system_call_GetPPID (void);
 
-void system_call_Sleep (unsigned ticks);
+void system_call_Sleep (unsigned);
 
 int system_call_GetTime (void);
 
-int system_call_GetNumInstr (void);
+int systm_SemGet (int key);
 
+void system_call_SemOp (int semid, int adjust);
+
+int system_call_SemCtl (int semid, unsigned command, int *val);
+
+int system_call_CondGet (int key);
+
+void system_call_CondOp (int condid, unsigned op, int semid);
+
+int system_call_CondRemove (int condid);
+
+unsigned system_call_ShmAllocate (unsigned size);
+
+int system_call_GetNumInstr (void);
 #endif /* IN_ASM */
 
 #endif /* SYSCALL_H */

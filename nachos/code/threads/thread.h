@@ -37,6 +37,8 @@
 #ifndef THREAD_H
 #define THREAD_H
 
+#define MAX_CHILD_COUNT 100
+
 #include "copyright.h"
 #include "utility.h"
 
@@ -54,11 +56,11 @@
 // Size of the thread's private execution stack.
 // WATCH OUT IF THIS ISN'T BIG ENOUGH!!!!!
 #define StackSize	(4 * 1024)	// in words
-#define MAX_THREADS     1000
 
-// Thread state
+
+// NachOSThread state
 enum ThreadStatus { JUST_CREATED, RUNNING, READY, BLOCKED };
-enum ChildStatus { CHILD_FINISHED, CHILD_LIVE, PARENT_WAITING };
+
 // external function, dummy routine whose sole job is to call NachOSThread::Print
 extern void ThreadPrint(int arg);	 
 
@@ -81,8 +83,8 @@ class NachOSThread {
     int machineState[MachineStateSize];  // all registers except for stackTop
 
   public:
-    NachOSThread(char* debugName);		// initialize a Thread 
-    ~NachOSThread(); 				// deallocate a Thread
+    NachOSThread(char* debugName, int nice);		// initialize a NachOSThread 
+    ~NachOSThread(); 				// deallocate a NachOSThread
 					// NOTE -- thread being deleted
 					// must not be running when delete 
 					// is called
@@ -96,78 +98,87 @@ class NachOSThread {
 						// relinquish the processor
     void FinishThread();  				// The thread is done executing
     
+    void Exit(bool terminateSim, int exitcode);	// Invoked when a thread calls
+						// Exit. The argument specifies
+						// if all threads have called
+						// Exit, in which case the
+						// simulation should be
+						// terminated.
+
     void CheckOverflow();   			// Check if thread has 
 						// overflowed its stack
     void setStatus(ThreadStatus st) { status = st; }
-    ThreadStatus getStatus() { return status; }
+    ThreadStatus getStatus (void) { return status; }
     char* getName() { return (name); }
     void Print() { printf("%s, ", name); }
 
-    int getPid() { return pid; }
-    int getPpid() { return ppid; }
-    void setPpid(int Ppid) { ppid = Ppid; }
+    inline int GetPID (void) { return pid; }
+    inline int GetPPID (void) { return ppid; }
 
-    int getInstrNum() { return instrNum; }
-    void incInstrNum() { instrNum++; }
-    void decInstrNum() { instrNum--; }
+    void SetChildExitCode (int childpid, int exitcode);	// Called by an exiting child thread
 
-    ChildStatus getChildStatus(int index) { return childStatus[index]; }
-    void setChildStatus(int index, ChildStatus status) { childStatus[index] = status; }
-    int getChildExitCode(int index) { return childExitCode[index]; }
-    int setChildExitCode(int index, int exitCode) { childExitCode[index] = exitCode; }
-    int getChildIndex(int pid);
-    void addChild(int child_pid);
-    void setChildPpid();
+    int CheckIfChild (int childpid);			// Called by Join to verify that the caller
+							// is joining a legitimate child.
 
-    void setStartCpuBurst(int ticks) { startCpuBurst = ticks; }
-    int getStartCpuBurst() { return startCpuBurst; }
-    int getNoCpuBursts() { return noCpuBursts; }
-    int getTotalCpuBurst() { return totalCpuBurst; }
-    void addWaitingTime(int ticks) { waitingTime += ticks - startWaitingTime; }
-    void setStartWaitingTime(int ticks) { startWaitingTime = ticks; }
-    int getWaitingTime() { return waitingTime; }
-    int getCreationTime() { return creationTime; }
-    int getCpuUsage() { return cpuUsage; }
-    void setCpuUsage(int cu) { cpuUsage = cu; }
+    int JoinWithChild (int whichchild);			// Called by SYScall_Join
 
-    int getPriority() { return priority; }
-    void setPriority(int Priority) { priority = Priority; }
-    void setBasePriority(int BasePriority) { basePriority = BasePriority; }
-    int getBasePriority() { return basePriority; }
-    double previousCpuBurst;
-    double previousCpuBurstEstimate;
+    void RegisterNewChild (int childpid) { childpidArray[childcount] = childpid; childcount++; ASSERT(childcount < MAX_CHILD_COUNT); }
+
+    void ResetReturnValue ();				// Used by SYScall_Fork to set the return value of child to zero
+    void Schedule ();					// Called by SYScall_Fork to enqueue the newly created child thread in the ready queue
+
+    void AllocateThreadStack(VoidFunctionPtr func, int arg);  // Allocate a stack for the simulated thread context. The thread starts execution at
+                                                        // func (in kernel space) with input argument arg.
+
+    void Startup();					// Called by the startup function of SYScall_Fork to cleanly start a forked child after it is scheduled
+
+    void SortedInsertInWaitQueue (unsigned when);	// Called by SYScall_Sleep handler
+
+    void IncInstructionCount();
+    unsigned GetInstructionCount();
+
+    void SetWaitStartTime (int ticks);
+    int GetWaitStartTime (void);
+
+    void SetCPUBurstStartTime (int ticks);
+    int GetCPUBurstStartTime (void);
+
+    void SetBasePriority (int p);
+    int GetBasePriority (void);
+
+    void SetPriority (int p);
+    int GetPriority (void);
+
+    void SetUsage (int usage);
+    int GetUsage (void);
 
   private:
     // some of the private data for this class is listed above
-
+    
     int* stack; 	 		// Bottom of the stack 
 					// NULL if this is the main thread
 					// (If NULL, don't deallocate stack)
     ThreadStatus status;		// ready, running or blocked
+    
     char* name;
 
-    void AllocateThreadStack(VoidFunctionPtr func, int arg);
-    					// Allocate a stack for thread.
-					// Used internally by ThreadFork()
-
     int pid, ppid;			// My pid and my parent's pid
-    int instrNum ;                      // Number of instructions executed by thread
 
-    int priority;
-    int basePriority;
-    int cpuUsage;
+    int childpidArray[MAX_CHILD_COUNT];	// My children
+    int childexitcode[MAX_CHILD_COUNT];	// Exit code of my children (return values for Join calls)
+    bool exitedChild[MAX_CHILD_COUNT];	// Which children have exited?
+    unsigned childcount;		// Count of children
 
-    bool parent_waiting;
-    int* childPid;
-    ChildStatus* childStatus;
-    int* childExitCode;
+    int waitchild_id;			// Child I am waiting on (as a result of a Join call)
 
-    int creationTime;
-    int noCpuBursts;
-    int totalCpuBurst;
-    int startCpuBurst;
-    int waitingTime;
-    int startWaitingTime;
+    int wait_start_time;		// Start tick of wait in ready queue
+    int burst_start_time;		// Start of the current CPU burst
+
+    int basePriority, schedPriority, usage;	// Used by the UNIX scheduler
+						// schedPriority is also used to store the next burst estimate
+
+    unsigned instructionCount;          // Keeps track of the instruction count executed by this thread
+
 #ifdef USER_PROGRAM
 // A thread running a user program actually has *two* sets of CPU registers -- 
 // one for its state while executing user code, one for its state 

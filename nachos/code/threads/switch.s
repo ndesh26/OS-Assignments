@@ -75,8 +75,8 @@ ThreadRoot:
 	# NEVER REACHED
 	.end ThreadRoot
 
-	# a0 -- pointer to old Thread
-	# a1 -- pointer to new Thread
+	# a0 -- pointer to old NachOSThread
+	# a1 -- pointer to new NachOSThread
 	.globl SWITCH
 	.ent	SWITCH,0
 SWITCH:
