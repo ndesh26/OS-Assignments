@@ -275,6 +275,7 @@ ProcessAddrSpace::AddSharedMemory(unsigned size)
         NachOSpageTable[i].virtualPage = i;
         NachOSpageTable[i].physicalPage = numPagesAllocated;
         numPagesAllocated++;
+        stats->numPageFaults++;
         NachOSpageTable[i].valid = TRUE;
         NachOSpageTable[i].use = FALSE;
         NachOSpageTable[i].dirty = FALSE;
