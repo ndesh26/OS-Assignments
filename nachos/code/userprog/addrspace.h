@@ -42,7 +42,7 @@ class ProcessAddrSpace {
     TranslationEntry* GetPageTable();
     int AddSharedMemory(unsigned size);
     void HandlePageFault(int vaddr);
-    char* filename;
+    char* GetFilename();
 
   private:
     TranslationEntry *NachOSpageTable;	// Assume linear page table translation
@@ -51,6 +51,7 @@ class ProcessAddrSpace {
 					// address space
     OpenFile *executable;               // The code I am excuting
     NoffHeader noffH;                   // The header of executable
+    char* filename;
 
 };
 

@@ -244,6 +244,12 @@ ProcessAddrSpace::GetNoffHeader()
     return noffH;
 }
 
+char*
+ProcessAddrSpace::GetFilename()
+{
+    return filename;
+}
+
 int
 ProcessAddrSpace::AddSharedMemory(unsigned size)
 {
