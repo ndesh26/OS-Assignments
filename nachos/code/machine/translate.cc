@@ -214,8 +214,8 @@ Machine::Translate(int virtAddr, int* physAddr, int size, bool writing)
 			virtAddr, NachOSpageTableSize);
 	    return AddressErrorException;
 	} else if (!NachOSpageTable[vpn].valid) {
-	    DEBUG('a', "virtual page # %d too large for page table size %d!\n", 
-			virtAddr, NachOSpageTableSize);
+	    DEBUG('a', "Page Fault at %d\n",
+			virtAddr);
 	    return PageFaultException;
 	}
 	entry = &NachOSpageTable[vpn];

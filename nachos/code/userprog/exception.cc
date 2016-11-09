@@ -120,13 +120,13 @@ ExceptionHandler(ExceptionType which)
     else if ((which == SyscallException) && (type == SYScall_Exec)) {
        // Copy the executable name into kernel space
        vaddr = machine->ReadRegister(4);
-       machine->ReadMem(vaddr, 1, &memval);
+       while (!machine->ReadMem(vaddr, 1, &memval));
        i = 0;
        while ((*(char*)&memval) != '\0') {
           buffer[i] = (*(char*)&memval);
           i++;
           vaddr++;
-          machine->ReadMem(vaddr, 1, &memval);
+          while (!machine->ReadMem(vaddr, 1, &memval));
        }
        buffer[i] = (*(char*)&memval);
        StartUserProcess(buffer);
@@ -157,7 +157,7 @@ ExceptionHandler(ExceptionType which)
        machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
        machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
        machine->WriteRegister(NextPCReg, machine->ReadRegister(NextPCReg)+4);
-       
+
        child = new NachOSThread("Forked thread", GET_NICE_FROM_PARENT);
        child->space = new ProcessAddrSpace (currentThread->space);  // Duplicates the address space
        child->SaveUserState ();		     		      // Duplicate the register set
@@ -214,12 +214,12 @@ ExceptionHandler(ExceptionType which)
     }
     else if ((which == SyscallException) && (type == SYScall_PrintString)) {
        vaddr = machine->ReadRegister(4);
-       machine->ReadMem(vaddr, 1, &memval);
+       while (!machine->ReadMem(vaddr, 1, &memval));
        while ((*(char*)&memval) != '\0') {
           writeDone->P() ;
           console->PutChar(*(char*)&memval);
           vaddr++;
-          machine->ReadMem(vaddr, 1, &memval);
+          while (!machine->ReadMem(vaddr, 1, &memval));
        }
        // Advance program counters.
        machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
@@ -308,6 +308,13 @@ ExceptionHandler(ExceptionType which)
        machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
        machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
        machine->WriteRegister(NextPCReg, machine->ReadRegister(NextPCReg)+4);
+    }
+    else if ((which == PageFaultException)) {
+        IntStatus oldLevel = interrupt->SetLevel(IntOff);  // disable interrupts
+        unsigned badVAdr = machine->registers[BadVAddrReg];
+        currentThread->space->HandlePageFault(badVAdr);
+        (void) interrupt->SetLevel(oldLevel);  // re-enable interrupts
+        currentThread->SortedInsertInWaitQueue (1000+stats->totalTicks);
     } else {
 	printf("Unexpected user mode exception %d %d\n", which, type);
 	ASSERT(FALSE);

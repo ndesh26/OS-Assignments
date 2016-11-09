@@ -38,10 +38,10 @@ StartUserProcess(char *filename)
 	printf("Unable to open file %s\n", filename);
 	return;
     }
-    space = new ProcessAddrSpace(executable);    
+    space = new ProcessAddrSpace(executable, filename);
     currentThread->space = space;
 
-    delete executable;			// close file
+    //delete executable;			// close file
 
     space->InitUserCPURegisters();		// set the initial register values
     space->RestoreStateOnSwitch();		// load page table register
@@ -161,7 +161,7 @@ ReadInputAndFork (char *filename)
       }
       sprintf(buffer,"Thread_%d",i+1);
       NachOSThread *child = new NachOSThread(buffer, priority[i]);
-      child->space = new ProcessAddrSpace (inFile);
+      child->space = new ProcessAddrSpace (inFile, batchProcesses[i]);
       delete inFile;
       child->space->InitUserCPURegisters();             // set the initial register values
       child->SaveUserState ();
