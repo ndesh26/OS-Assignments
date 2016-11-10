@@ -40,7 +40,9 @@ class TranslationEntry {
 			// page is referenced or modified.
     bool dirty;         // This bit is set by the hardware every time the
 			// page is modified.
-    bool shared;
+    bool shared;        // This page is shared with other process
+    bool backup;        // Indicates if the page is saved in backup array
+
 };
 
 #endif

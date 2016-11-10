@@ -51,7 +51,9 @@ class ProcessAddrSpace {
 					// address space
     OpenFile *executable;               // The code I am excuting
     NoffHeader noffH;                   // The header of executable
-    char* filename;
+    char* filename;                     // We also store this as we need to pass it to the child
+
+    char *backup;
 
 };
 

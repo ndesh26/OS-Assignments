@@ -313,7 +313,6 @@ ExceptionHandler(ExceptionType which)
         IntStatus oldLevel = interrupt->SetLevel(IntOff);  // disable interrupts
         unsigned badVAdr = machine->registers[BadVAddrReg];
         currentThread->space->HandlePageFault(badVAdr);
-        stats->numPageFaults++;
         (void) interrupt->SetLevel(oldLevel);  // re-enable interrupts
         currentThread->SortedInsertInWaitQueue (1000+stats->totalTicks);
     } else {
