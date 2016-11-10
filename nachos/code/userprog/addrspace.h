@@ -43,6 +43,7 @@ class ProcessAddrSpace {
     int AddSharedMemory(unsigned size);
     void HandlePageFault(int vaddr);
     char* GetFilename();
+    char* GetBackup();
 
   private:
     TranslationEntry *NachOSpageTable;	// Assume linear page table translation

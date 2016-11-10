@@ -105,6 +105,12 @@ class Instruction {
 // The procedures in this class are defined in machine.cc, mipssim.cc, and
 // translate.cc.
 
+class PhysicalPageMap {
+    public:
+        int thread_id;
+        TranslationEntry *entry;
+};
+
 class Machine {
   public:
     Machine(bool debug);	// Initialize the simulation of the hardware
@@ -160,6 +166,8 @@ class Machine {
     char *mainMemory;		// physical memory to store user program,
 				// code and data, while executing
  
+    PhysicalPageMap *physicalPageMap; // Inverse page table
+
     int registers[NumTotalRegs]; // CPU registers, for executing user programs
 
 

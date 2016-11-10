@@ -41,6 +41,24 @@ SwapHeader (NoffHeader *noffH)
 	noffH->uninitData.inFileAddr = WordToHost(noffH->uninitData.inFileAddr);
 }
 
+void
+CheckDirtyAndBackup(int page)
+{
+    char *backup;
+    TranslationEntry *entry;
+    int i;
+
+    entry = machine->physicalPageMap[page].entry;
+
+    ASSERT(page != entry->physicalPage);
+
+    if (entry->dirty) {
+        backup = threadArray[machine->physicalPageMap[page].thread_id]->space->GetBackup();
+        for (i = 0; i < PageSize; i++)
+            backup[entry->virtualPage + i] = machine->mainMemory[page + i];
+    }
+}
+
 unsigned
 getNewPage ()
 {
@@ -162,6 +180,8 @@ ProcessAddrSpace::ProcessAddrSpace(ProcessAddrSpace *parentSpace)
             for (k = 0; k < PageSize; k++)
                machine->mainMemory[startAddrChild + k] = machine->mainMemory[startAddrParent + k];
             NachOSpageTable[i].physicalPage = unallocated;
+            machine->physicalPageMap[unallocated].thread_id = currentThread->GetPID();
+            machine->physicalPageMap[unallocated].entry = &NachOSpageTable[i];
         }
         NachOSpageTable[i].valid = parentPageTable[i].valid;
         NachOSpageTable[i].use = parentPageTable[i].use;
@@ -270,6 +290,12 @@ ProcessAddrSpace::GetFilename()
     return filename;
 }
 
+char*
+ProcessAddrSpace::GetBackup()
+{
+    return backup;
+}
+
 int
 ProcessAddrSpace::AddSharedMemory(unsigned size)
 {
@@ -307,6 +333,8 @@ ProcessAddrSpace::AddSharedMemory(unsigned size)
         NachOSpageTable[i].readOnly = FALSE;  	// if the code segment was entirely on
                                                 // a separate page, we could set its
                                                 // pages to be read-only
+        machine->physicalPageMap[unallocated].thread_id = currentThread->GetPID();
+        machine->physicalPageMap[unallocated].entry = &NachOSpageTable[i];
     }
 
     DEBUG('a', "Initializing shared address space, num pages %d, size %d\n",
@@ -318,8 +346,6 @@ ProcessAddrSpace::AddSharedMemory(unsigned size)
     machine->NachOSpageTableSize = numPagesInVM;
     return startSharedAddr;
 }
-
-
 
 void
 ProcessAddrSpace::HandlePageFault(int vaddr)
@@ -334,4 +360,6 @@ ProcessAddrSpace::HandlePageFault(int vaddr)
                         PageSize, noffH.code.inFileAddr + vpn * PageSize);
     NachOSpageTable[vpn].physicalPage = unallocated;
     NachOSpageTable[vpn].valid = TRUE;
+    machine->physicalPageMap[unallocated].thread_id = currentThread->GetPID();
+    machine->physicalPageMap[unallocated].entry = &NachOSpageTable[vpn];
 }
