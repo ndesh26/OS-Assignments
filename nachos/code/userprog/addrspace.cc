@@ -85,6 +85,20 @@ getNewPage (int avoid)
             return numPagesAllocated - 1;
         case FIFO:
         case LRU:
+            if (numPagesAllocated == NumPhysPages) {
+                int min_access = stats->totalTicks;
+                for(int i=0;i<NumPhysPages;i++){
+                    if(machine->physicalPageMap[i].last_access<min_access && machine->physicalPageMap[i].entry->shared == FALSE){
+                        page = i;
+                        min_access = machine->physicalPageMap[i].last_access;
+                    }
+                }
+                DEBUG('k', "Replacing page %d\n", page);
+                CheckDirtyAndBackup(page);
+                return page;
+            }
+            numPagesAllocated++;
+            return numPagesAllocated - 1;
         case LRU_CLOCK:
         default:
             ASSERT(0);
