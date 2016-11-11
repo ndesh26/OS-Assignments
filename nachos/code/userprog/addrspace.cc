@@ -84,6 +84,14 @@ getNewPage (int avoid)
             numPagesAllocated++;
             return numPagesAllocated - 1;
         case FIFO:
+	    if (numPagesAllocated == NumPhysPages) {
+                page = machine->fifoQueue->Remove(); 
+                DEBUG('k', "Replacing page %d\n", page);
+                CheckDirtyAndBackup(page);
+                return page;
+            }
+            numPagesAllocated++;
+            return numPagesAllocated - 1;
         case LRU:
             if (numPagesAllocated == NumPhysPages) {
                 int min_access = stats->totalTicks;
@@ -238,6 +246,7 @@ ProcessAddrSpace::ProcessAddrSpace(ProcessAddrSpace *parentSpace, int pid)
                machine->mainMemory[startAddrChild + k] = machine->mainMemory[startAddrParent + k];
             NachOSpageTable[i].physicalPage = unallocated;
             SetPhysicalMap(unallocated, pid, &NachOSpageTable[i]);
+            machine->fifoQueue->Append(unallocated);
             machine->physicalPageMap[unallocated].last_access = stats->totalTicks;
         }
         NachOSpageTable[i].valid = parentPageTable[i].valid;
@@ -436,6 +445,7 @@ ProcessAddrSpace::HandlePageFault(int vaddr)
     }
     NachOSpageTable[vpn].physicalPage = unallocated;
     NachOSpageTable[vpn].valid = TRUE;
+    machine->fifoQueue->Append(unallocated);
     SetPhysicalMap(unallocated, currentThread->GetPID(), &NachOSpageTable[vpn]);
     machine->physicalPageMap[unallocated].last_access = stats->totalTicks;
 }

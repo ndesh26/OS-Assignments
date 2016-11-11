@@ -106,12 +106,52 @@ class Instruction {
 // The procedures in this class are defined in machine.cc, mipssim.cc, and
 // translate.cc.
 
-class PhysicalPageMap {
+class PhysicalPageMap { // need to implement revrse pagetable
     public:
         int thread_id;
         int last_access;
         bool refBit;
         TranslationEntry *entry;
+};
+
+class FifoElement {		// Needed to implement fifo page replacement algo
+  public:
+    int page;				// page to be removed 
+    FifoElement *next;		// Build the list
+    FifoElement *prev;
+
+    FifoElement(int p) {
+        page = p;
+    }
+};
+
+class FifoQueue {
+  private:
+    FifoElement *first;
+    FifoElement *last;
+  public:
+    FifoQueue() {
+        first = last = NULL;
+    }
+   ~FifoQueue(void) {}
+
+    void Append(int p) {
+        if (first == NULL) 
+            first = last = new FifoElement(p);
+        else {
+            last->next = new FifoElement(p);
+            last->next->prev = last;
+            last = last->next;
+        }
+    }
+
+    int Remove() {
+        FifoElement *temp = first;
+        int i = temp->page;
+        first = first->next;
+        delete temp;
+        return i;
+    }
 };
 
 class Machine {
@@ -170,7 +210,7 @@ class Machine {
 				// code and data, while executing
  
     PhysicalPageMap *physicalPageMap; // Inverse page table
-    //List fifoQueue; 
+    FifoQueue *fifoQueue; 
     int registers[NumTotalRegs]; // CPU registers, for executing user programs
 
 
