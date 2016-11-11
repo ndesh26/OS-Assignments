@@ -87,8 +87,8 @@ getNewPage (int avoid)
         case LRU:
             if (numPagesAllocated == NumPhysPages) {
                 int min_access = stats->totalTicks;
-                for(int i=0;i<NumPhysPages;i++){
-                    if(machine->physicalPageMap[i].last_access<min_access && machine->physicalPageMap[i].entry->shared == FALSE){
+                for (int i = 0; i < NumPhysPages; i++) {
+                    if (machine->physicalPageMap[i].last_access <= min_access && machine->physicalPageMap[i].entry->shared == FALSE && i != avoid) {
                         page = i;
                         min_access = machine->physicalPageMap[i].last_access;
                     }
@@ -238,8 +238,7 @@ ProcessAddrSpace::ProcessAddrSpace(ProcessAddrSpace *parentSpace, int pid)
                machine->mainMemory[startAddrChild + k] = machine->mainMemory[startAddrParent + k];
             NachOSpageTable[i].physicalPage = unallocated;
             SetPhysicalMap(unallocated, pid, &NachOSpageTable[i]);
-            //machine->physicalPageMap[unallocated].thread_id = pid; 
-              //machine->physicalPageMap[unallocated].entry = &NachOSpageTable[i];
+            machine->physicalPageMap[unallocated].last_access = stats->totalTicks;
         }
         NachOSpageTable[i].valid = parentPageTable[i].valid;
         NachOSpageTable[i].use = parentPageTable[i].use;
@@ -399,8 +398,7 @@ ProcessAddrSpace::AddSharedMemory(unsigned size)
         NachOSpageTable[i].readOnly = FALSE;
         NachOSpageTable[i].backup = FALSE;
         SetPhysicalMap(unallocated, currentThread->GetPID(), &NachOSpageTable[i]);
-        //machine->physicalPageMap[unallocated].thread_id = currentThread->GetPID();
-        //machine->physicalPageMap[unallocated].entry = &NachOSpageTable[i];
+        machine->physicalPageMap[unallocated].last_access = stats->totalTicks;
     }
 
     for (i = 0; i < numPagesInVM * PageSize; i++)
@@ -439,6 +437,5 @@ ProcessAddrSpace::HandlePageFault(int vaddr)
     NachOSpageTable[vpn].physicalPage = unallocated;
     NachOSpageTable[vpn].valid = TRUE;
     SetPhysicalMap(unallocated, currentThread->GetPID(), &NachOSpageTable[vpn]);
-    //machine->physicalPageMap[unallocated].thread_id = currentThread->GetPID();
-    //machine->physicalPageMap[unallocated].entry = &NachOSpageTable[vpn];
+    machine->physicalPageMap[unallocated].last_access = stats->totalTicks;
 }
