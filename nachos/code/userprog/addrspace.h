@@ -25,7 +25,7 @@ class ProcessAddrSpace {
 					// initializing it with the program
 					// stored in the file "executable"
 
-    ProcessAddrSpace (ProcessAddrSpace *parentSpace);	// Used by fork
+    ProcessAddrSpace (ProcessAddrSpace *parentSpace, int pid);	// Used by fork
 
     ~ProcessAddrSpace();			// De-allocate an address space
 

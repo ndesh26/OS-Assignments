@@ -159,7 +159,7 @@ ExceptionHandler(ExceptionType which)
        machine->WriteRegister(NextPCReg, machine->ReadRegister(NextPCReg)+4);
 
        child = new NachOSThread("Forked thread", GET_NICE_FROM_PARENT);
-       child->space = new ProcessAddrSpace (currentThread->space);  // Duplicates the address space
+       child->space = new ProcessAddrSpace (currentThread->space, child->GetPID());  // Duplicates the address space
        child->SaveUserState ();		     		      // Duplicate the register set
        child->ResetReturnValue ();			     // Sets the return register to zero
        child->AllocateThreadStack (ForkStartFunction, 0);	// Make it ready for a later context switch

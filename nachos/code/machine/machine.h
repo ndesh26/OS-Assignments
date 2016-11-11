@@ -25,6 +25,7 @@
 #include "utility.h"
 #include "translate.h"
 #include "disk.h"
+#include "list.h"
 
 // Definitions related to the size, and format of user memory
 
@@ -33,7 +34,7 @@
 					// simplicity
 
 //#define NumPhysPages    32
-#define NumPhysPages    1024
+#define NumPhysPages    5
 #define MemorySize 	(NumPhysPages * PageSize)
 #define TLBSize		4		// if there is a TLB, make it small
 
@@ -167,7 +168,7 @@ class Machine {
 				// code and data, while executing
  
     PhysicalPageMap *physicalPageMap; // Inverse page table
-
+    //List fifoQueue; 
     int registers[NumTotalRegs]; // CPU registers, for executing user programs
 
 

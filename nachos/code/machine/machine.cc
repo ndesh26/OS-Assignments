@@ -60,6 +60,7 @@ Machine::Machine(bool debug)
         registers[i] = 0;
     mainMemory = new char[MemorySize];
     physicalPageMap = new PhysicalPageMap[NumPhysPages];
+    //fifoQueue = new List();
     for (i = 0; i < MemorySize; i++)
       	mainMemory[i] = 0;
 

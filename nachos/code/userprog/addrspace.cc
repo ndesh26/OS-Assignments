@@ -44,30 +44,45 @@ SwapHeader (NoffHeader *noffH)
 void
 CheckDirtyAndBackup(int page)
 {
-    char *backup;
+    char *backup = NULL;
     TranslationEntry *entry;
-    int i;
+    int i, thread_id;
 
     entry = machine->physicalPageMap[page].entry;
+    thread_id = machine->physicalPageMap[page].thread_id;
+    ASSERT(page == entry->physicalPage);
 
-    ASSERT(page != entry->physicalPage);
-
-    if (entry->dirty) {
-        backup = threadArray[machine->physicalPageMap[page].thread_id]->space->GetBackup();
+    if (entry->dirty && !exitThreadArray[thread_id]) {
+        backup = threadArray[thread_id]->space->GetBackup();
         for (i = 0; i < PageSize; i++)
-            backup[entry->virtualPage + i] = machine->mainMemory[page + i];
+            backup[entry->virtualPage * PageSize + i] = machine->mainMemory[page * PageSize + i];
+        entry->backup = TRUE;
     }
+    entry->physicalPage = -1;
+    entry->valid = FALSE;
 }
 
 unsigned
-getNewPage ()
+getNewPage (int avoid)
 {
+    int page = avoid;
+ 
     stats->numPageFaults++;
     switch (pageReplacementAlgo) {
         case NONE:
+            ASSERT(numPagesAllocated <= NumPhysPages)
             numPagesAllocated++;
             return numPagesAllocated - 1;
         case RANDOM:
+            if (numPagesAllocated == NumPhysPages) {
+                while(page == avoid || machine->physicalPageMap[page].entry->shared == TRUE)
+                    page = Random() % NumPhysPages;
+                DEBUG('k', "Replacing page %d\n", page);
+                CheckDirtyAndBackup(page);
+                return page;
+            }
+            numPagesAllocated++;
+            return numPagesAllocated - 1;
         case FIFO:
         case LRU:
         case LRU_CLOCK:
@@ -76,6 +91,12 @@ getNewPage ()
     }
 }
 
+void
+SetPhysicalMap(int page, int pid, TranslationEntry *entry)
+{
+    machine->physicalPageMap[page].thread_id = pid;
+    machine->physicalPageMap[page].entry = entry;
+}
 //----------------------------------------------------------------------
 // ProcessAddrSpace::ProcessAddrSpace
 // 	Create an address space to run a user program.
@@ -121,7 +142,7 @@ ProcessAddrSpace::ProcessAddrSpace(OpenFile *Executable, char *Filename)
 										// at least until we have
 										// virtual memory
 
-    DEBUG('a', "Initializing address space, num pages %d, size %d\n", 
+    DEBUG('k', "Initializing address space, num pages %d, size %d\n", 
 					numPagesInVM, size);
 // first, set up the translation 
     NachOSpageTable = new TranslationEntry[numPagesInVM];
@@ -132,6 +153,7 @@ ProcessAddrSpace::ProcessAddrSpace(OpenFile *Executable, char *Filename)
 	NachOSpageTable[i].use = FALSE;
 	NachOSpageTable[i].dirty = FALSE;
         NachOSpageTable[i].shared = FALSE;
+        NachOSpageTable[i].backup = FALSE;
 	NachOSpageTable[i].readOnly = FALSE;  // if the code segment was entirely on 
 					// a separate page, we could set its 
 					// pages to be read-only
@@ -143,11 +165,13 @@ ProcessAddrSpace::ProcessAddrSpace(OpenFile *Executable, char *Filename)
 //      We need to duplicate the address space of the parent.
 //----------------------------------------------------------------------
 
-ProcessAddrSpace::ProcessAddrSpace(ProcessAddrSpace *parentSpace)
+ProcessAddrSpace::ProcessAddrSpace(ProcessAddrSpace *parentSpace, int pid)
 {
     numPagesInVM = parentSpace->GetNumPages();
     unsigned i, k, size = numPagesInVM * PageSize;
     unsigned startAddrParent, startAddrChild, unallocated;
+    char *parentBackup = parentSpace->GetBackup();
+
     filename = parentSpace->filename;
     executable = fileSystem->Open(filename);
     if (executable == NULL) {
@@ -155,6 +179,7 @@ ProcessAddrSpace::ProcessAddrSpace(ProcessAddrSpace *parentSpace)
 	return;
     }
     noffH = parentSpace->GetNoffHeader();
+    backup = new char[size];
 
     if (pageReplacementAlgo == NONE)
         ASSERT(numPagesInVM+numPagesAllocated <= NumPhysPages);                // check we're not trying
@@ -162,7 +187,7 @@ ProcessAddrSpace::ProcessAddrSpace(ProcessAddrSpace *parentSpace)
                                                                                 // at least until we have
                                                                                 // virtual memory
 
-    DEBUG('a', "Initializing address space, num pages %d, size %d\n",
+    DEBUG('k', "Initializing address space, num pages %d, size %d\n",
                                         numPagesInVM, size);
     // first, set up the translation
     TranslationEntry* parentPageTable = parentSpace->GetPageTable();
@@ -172,25 +197,29 @@ ProcessAddrSpace::ProcessAddrSpace(ProcessAddrSpace *parentSpace)
         if (parentPageTable[i].shared || !parentPageTable[i].valid)
             NachOSpageTable[i].physicalPage = parentPageTable[i].physicalPage;
         else if (parentPageTable[i].valid) {
-            unallocated = getNewPage();
-            DEBUG('a', "Copying virtual page %d to physical page %d\n", i, unallocated);
+            unallocated = getNewPage(parentPageTable[i].physicalPage);
+            DEBUG('k', "Copying virtual page %d to physical page %d\n", i, unallocated);
             bzero(&machine->mainMemory[unallocated * PageSize], PageSize);
             startAddrChild = unallocated * PageSize;
             startAddrParent = parentPageTable[i].physicalPage * PageSize;
             for (k = 0; k < PageSize; k++)
                machine->mainMemory[startAddrChild + k] = machine->mainMemory[startAddrParent + k];
             NachOSpageTable[i].physicalPage = unallocated;
-            machine->physicalPageMap[unallocated].thread_id = currentThread->GetPID();
-            machine->physicalPageMap[unallocated].entry = &NachOSpageTable[i];
+            SetPhysicalMap(unallocated, pid, &NachOSpageTable[i]);
+            //machine->physicalPageMap[unallocated].thread_id = pid; 
+              //machine->physicalPageMap[unallocated].entry = &NachOSpageTable[i];
         }
         NachOSpageTable[i].valid = parentPageTable[i].valid;
         NachOSpageTable[i].use = parentPageTable[i].use;
         NachOSpageTable[i].dirty = parentPageTable[i].dirty;
         NachOSpageTable[i].shared = parentPageTable[i].shared;
+        NachOSpageTable[i].backup = parentPageTable[i].backup;
         NachOSpageTable[i].readOnly = parentPageTable[i].readOnly;  	// if the code segment was entirely on
                                         			// a separate page, we could set its
                                         			// pages to be read-only
     }
+    for (i = 0; i < size; i++)
+        backup[i] = parentBackup[i];
 }
 
 //----------------------------------------------------------------------
@@ -232,7 +261,7 @@ ProcessAddrSpace::InitUserCPURegisters()
    // allocated the stack; but subtract off a bit, to make sure we don't
    // accidentally reference off the end!
     machine->WriteRegister(StackReg, numPagesInVM * PageSize - 16);
-    DEBUG('a', "Initializing stack register to %d\n", numPagesInVM * PageSize - 16);
+    DEBUG('k', "Initializing stack register to %d\n", numPagesInVM * PageSize - 16);
 }
 
 //----------------------------------------------------------------------
@@ -302,12 +331,15 @@ ProcessAddrSpace::AddSharedMemory(unsigned size)
     int i, startSharedAddr;
     unsigned numSharedPages, unallocated;
     TranslationEntry* pageTable;
+    char *oldBackup;
 
     numSharedPages =  divRoundUp(size, PageSize);
     size = numSharedPages * PageSize;
     pageTable = NachOSpageTable;
     NachOSpageTable = new TranslationEntry[numPagesInVM + numSharedPages];
-
+    oldBackup = backup;
+    backup = new char[(numPagesInVM + numSharedPages) * PageSize];
+     
     for (i = 0; i < numPagesInVM; i++) {
         NachOSpageTable[i].virtualPage = i;
         NachOSpageTable[i].physicalPage = pageTable[i].physicalPage;
@@ -315,14 +347,16 @@ ProcessAddrSpace::AddSharedMemory(unsigned size)
         NachOSpageTable[i].use = pageTable[i].use;
         NachOSpageTable[i].dirty = pageTable[i].dirty;
         NachOSpageTable[i].shared = pageTable[i].shared;
-        NachOSpageTable[i].readOnly = pageTable[i].readOnly;  	// if the code segment was entirely on
-                                                                // a separate page, we could set its
-                                                                // pages to be read-only
+        NachOSpageTable[i].readOnly = pageTable[i].readOnly;
+        NachOSpageTable[i].backup = pageTable[i].backup;
+
+        if (pageTable[i].valid)
+            SetPhysicalMap(pageTable[i].physicalPage, currentThread->GetPID(), &NachOSpageTable[i]);
     }
 
     for (i = numPagesInVM; i < numPagesInVM + numSharedPages; i++) {
-        unallocated = getNewPage();
-        DEBUG('a', "allocating shared page %d to physical page %d\n", i, unallocated);
+        unallocated = getNewPage(-1);
+        DEBUG('k', "allocating shared page %d to physical page %d\n", i, unallocated);
         bzero(&machine->mainMemory[unallocated * PageSize], PageSize);
         NachOSpageTable[i].virtualPage = i;
         NachOSpageTable[i].physicalPage = unallocated;
@@ -330,16 +364,20 @@ ProcessAddrSpace::AddSharedMemory(unsigned size)
         NachOSpageTable[i].use = FALSE;
         NachOSpageTable[i].dirty = FALSE;
         NachOSpageTable[i].shared = TRUE;
-        NachOSpageTable[i].readOnly = FALSE;  	// if the code segment was entirely on
-                                                // a separate page, we could set its
-                                                // pages to be read-only
-        machine->physicalPageMap[unallocated].thread_id = currentThread->GetPID();
-        machine->physicalPageMap[unallocated].entry = &NachOSpageTable[i];
+        NachOSpageTable[i].readOnly = FALSE;
+        NachOSpageTable[i].backup = FALSE;
+        SetPhysicalMap(unallocated, currentThread->GetPID(), &NachOSpageTable[i]);
+        //machine->physicalPageMap[unallocated].thread_id = currentThread->GetPID();
+        //machine->physicalPageMap[unallocated].entry = &NachOSpageTable[i];
     }
 
-    DEBUG('a', "Initializing shared address space, num pages %d, size %d\n",
+    for (i = 0; i < numPagesInVM * PageSize; i++)
+        backup[i] = oldBackup[i];
+
+    DEBUG('k', "Initializing shared address space, num pages %d, size %d\n",
                                         numSharedPages, size);
     delete pageTable;
+    delete oldBackup;
     startSharedAddr = numPagesInVM * PageSize;
     numPagesInVM += numSharedPages;
     machine->NachOSpageTable = NachOSpageTable;
@@ -350,16 +388,25 @@ ProcessAddrSpace::AddSharedMemory(unsigned size)
 void
 ProcessAddrSpace::HandlePageFault(int vaddr)
 {
-    unsigned vpn;
-    unsigned unallocated = getNewPage();
+    unsigned vpn, i;
+    unsigned unallocated = getNewPage(-1);
 
     vpn = vaddr/PageSize;
-    DEBUG('a', "Copying virtual page %d to physical page %d\n", vpn, unallocated);
+    DEBUG('k', "Copying virtual page %d to physical page %d ", vpn, unallocated);
     bzero(&machine->mainMemory[unallocated * PageSize], PageSize);
-    executable->ReadAt(&(machine->mainMemory[unallocated * PageSize]),
+    if (NachOSpageTable[vpn].backup) {
+        DEBUG('k',"from backup\n");
+        for (i = 0; i < PageSize; i++)
+            machine->mainMemory[i + unallocated * PageSize] = backup[i + vpn * PageSize];
+    } 
+    else {
+        DEBUG('k',"from executable\n");
+        executable->ReadAt(&(machine->mainMemory[unallocated * PageSize]),
                         PageSize, noffH.code.inFileAddr + vpn * PageSize);
+    }
     NachOSpageTable[vpn].physicalPage = unallocated;
     NachOSpageTable[vpn].valid = TRUE;
-    machine->physicalPageMap[unallocated].thread_id = currentThread->GetPID();
-    machine->physicalPageMap[unallocated].entry = &NachOSpageTable[vpn];
+    SetPhysicalMap(unallocated, currentThread->GetPID(), &NachOSpageTable[vpn]);
+    //machine->physicalPageMap[unallocated].thread_id = currentThread->GetPID();
+    //machine->physicalPageMap[unallocated].entry = &NachOSpageTable[vpn];
 }
