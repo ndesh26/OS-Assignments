@@ -248,6 +248,7 @@ ProcessAddrSpace::ProcessAddrSpace(ProcessAddrSpace *parentSpace, int pid)
             SetPhysicalMap(unallocated, pid, &NachOSpageTable[i]);
             machine->fifoQueue->Append(unallocated);
             machine->physicalPageMap[unallocated].last_access = stats->totalTicks;
+            machine->physicalPageMap[parentPageTable[i].physicalPage].last_access = stats->totalTicks;
         }
         NachOSpageTable[i].valid = parentPageTable[i].valid;
         NachOSpageTable[i].use = parentPageTable[i].use;
