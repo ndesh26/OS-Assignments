@@ -34,7 +34,7 @@
 					// simplicity
 
 //#define NumPhysPages    32
-#define NumPhysPages    16
+#define NumPhysPages    6
 #define MemorySize 	(NumPhysPages * PageSize)
 #define TLBSize		4		// if there is a TLB, make it small
 
@@ -142,6 +142,16 @@ class FifoQueue {
             last->next = new FifoElement(p);
             last->next->prev = last;
             last = last->next;
+        }
+    }
+
+    void Prepend(int p) {
+        if (first == NULL)
+            first = last = new FifoElement(p);
+        else {
+            first->prev = new FifoElement(p);
+            first->prev->next = first;
+            first = first->prev;
         }
     }
 

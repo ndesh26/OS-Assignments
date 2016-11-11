@@ -50,6 +50,8 @@ CheckDirtyAndBackup(int page)
 
     entry = machine->physicalPageMap[page].entry;
     thread_id = machine->physicalPageMap[page].thread_id;
+    //ASSERT(exitThreadArray[thread_id]);
+    DEBUG('k', "page: %d, entry page: %d\n", page, entry->physicalPage);
     ASSERT(page == entry->physicalPage);
 
     if (entry->dirty && !exitThreadArray[thread_id]) {
@@ -86,6 +88,11 @@ getNewPage (int avoid)
         case FIFO:
 	    if (numPagesAllocated == NumPhysPages) {
                 page = machine->fifoQueue->Remove(); 
+                if (page == avoid) {
+                    int temp = page;
+                    page = machine->fifoQueue->Remove();
+                    machine->fifoQueue->Prepend(temp);
+                }
                 DEBUG('k', "Replacing page %d\n", page);
                 CheckDirtyAndBackup(page);
                 return page;
@@ -109,15 +116,15 @@ getNewPage (int avoid)
             return numPagesAllocated - 1;
         case LRU_CLOCK:
             if (numPagesAllocated == NumPhysPages) {
+                clockHand = (clockHand + 1)%NumPhysPages;
                 while(1){
-                    if(machine->physicalPageMap[clockHand].refBit == 0 && machine->physicalPageMap[clockHand].entry->shared == FALSE){
+                    if (machine->physicalPageMap[clockHand].refBit == 0 && machine->physicalPageMap[clockHand].entry->shared == FALSE && clockHand != avoid) {
                         machine->physicalPageMap[clockHand].refBit = 1;
                         DEBUG('k', "Replacing page %d\n", clockHand);
                         CheckDirtyAndBackup(clockHand);
-                        clockHand = (clockHand + 1)%NumPhysPages;
-                        return (clockHand-1+NumPhysPages)%NumPhysPages;
+                        return clockHand;
                     } 
-                    else if(machine->physicalPageMap[clockHand].refBit == 1 && machine->physicalPageMap[clockHand].entry->shared == FALSE){
+                    else if (machine->physicalPageMap[clockHand].refBit == 1 && machine->physicalPageMap[clockHand].entry->shared == FALSE) {
                         machine->physicalPageMap[clockHand].refBit = 0;
                     }
                     clockHand = (clockHand + 1)%NumPhysPages;
@@ -247,6 +254,7 @@ ProcessAddrSpace::ProcessAddrSpace(ProcessAddrSpace *parentSpace, int pid)
             NachOSpageTable[i].physicalPage = unallocated;
             SetPhysicalMap(unallocated, pid, &NachOSpageTable[i]);
             machine->fifoQueue->Append(unallocated);
+            machine->physicalPageMap[parentPageTable[i].physicalPage].refBit = 1;
             machine->physicalPageMap[parentPageTable[i].physicalPage].last_access = stats->totalTicks;
             machine->physicalPageMap[unallocated].last_access = stats->totalTicks;
         }
