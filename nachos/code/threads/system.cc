@@ -118,7 +118,7 @@ Initialize(int argc, char **argv)
 
     initializedConsoleSemaphores = false;
     numPagesAllocated = 0;
-    clockHand = 0;
+    clockHand = -1;
 
     schedulingAlgo = NON_PREEMPTIVE_BASE;	// Default
     pageReplacementAlgo = NONE;                 // Default

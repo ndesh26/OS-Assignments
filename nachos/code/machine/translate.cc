@@ -246,6 +246,8 @@ Machine::Translate(int virtAddr, int* physAddr, int size, bool writing)
 	return BusErrorException;
     }
     machine->physicalPageMap[pageFrame].last_access = stats->totalTicks;
+    machine->physicalPageMap[pageFrame].refBit = 1;
+
     entry->use = TRUE;		// set the use, dirty bits
     if (writing)
 	entry->dirty = TRUE;
