@@ -49,6 +49,7 @@ SynchDisk   *synchDisk;
 
 #ifdef USER_PROGRAM	// requires either FILESYS or FILESYS_STUB
 Machine *machine;	// user program memory and registers
+int NumPhysPages;
 #endif
 
 #ifdef NETWORK
@@ -170,6 +171,10 @@ Initialize(int argc, char **argv)
 #ifdef USER_PROGRAM
 	if (!strcmp(*argv, "-s"))
 	    debugUserProg = TRUE;
+        else if (!strcmp(*argv, "-T")) {		// read page replacement algorithm
+           NumPhysPages = atoi(*(argv + 1));
+           argCount = 2;
+        } 
 #endif
 #ifdef FILESYS_NEEDED
 	if (!strcmp(*argv, "-f"))

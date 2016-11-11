@@ -120,7 +120,7 @@ main(int argc, char **argv)
            pageReplacementAlgo = atoi(*(argv + 1));
            argCount = 2;
            ASSERT((pageReplacementAlgo > 0) && (pageReplacementAlgo <= 4));
-        } else if (!strcmp(*argv, "-x")) {        	// run a user program
+       } else if (!strcmp(*argv, "-x")) {        	// run a user program
 	    ASSERT(argc > 1);
             StartUserProcess(*(argv + 1));
             argCount = 2;
