@@ -100,6 +100,24 @@ getNewPage (int avoid)
             numPagesAllocated++;
             return numPagesAllocated - 1;
         case LRU_CLOCK:
+            if (numPagesAllocated == NumPhysPages) {
+                while(1){
+                    if(machine->physicalPageMap[clockHand].refBit == 0 && machine->physicalPageMap[clockHand].entry->shared == FALSE){
+                        machine->physicalPageMap[clockHand].refBit = 1;
+                        DEBUG('k', "Replacing page %d\n", clockHand);
+                        CheckDirtyAndBackup(clockHand);
+                        clockHand = (clockHand + 1)%NumPhysPages;
+                        return (clockHand-1+NumPhysPages)%NumPhysPages;
+                    } 
+                    else if(machine->physicalPageMap[clockHand].refBit == 1 && machine->physicalPageMap[clockHand].entry->shared == FALSE){
+                        machine->physicalPageMap[clockHand].refBit = 0;
+                    }
+                    clockHand = (clockHand + 1)%NumPhysPages;
+                }
+            }
+            machine->physicalPageMap[numPagesAllocated].refBit = 1;
+            numPagesAllocated++;
+            return numPagesAllocated - 1;
         default:
             ASSERT(0);
     }

@@ -34,7 +34,7 @@
 					// simplicity
 
 //#define NumPhysPages    32
-#define NumPhysPages    3
+#define NumPhysPages    16
 #define MemorySize 	(NumPhysPages * PageSize)
 #define TLBSize		4		// if there is a TLB, make it small
 
@@ -110,6 +110,7 @@ class PhysicalPageMap {
     public:
         int thread_id;
         int last_access;
+        bool refBit;
         TranslationEntry *entry;
 };
 
