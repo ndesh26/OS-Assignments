@@ -18,3 +18,6 @@ and use this command to commit changes
 ```
 git commit -s
 ```
+
+### Caveat
+The author highly discourages plagiarism of any sorts.
